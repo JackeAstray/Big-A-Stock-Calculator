@@ -1,0 +1,133 @@
+﻿<Window x:Class="Big_A_Stock_Calculator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Big_A_Stock_Calculator"
+        mc:Ignorable="d"
+        Title="A股做T保本计算器" Height="680" Width="420" WindowStartupLocation="CenterScreen">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="15">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+        <!-- 一、参数设置区 -->
+        <GroupBox Header="费率设置 (系统默认参数)" Grid.Row="0" Margin="0,0,0,10" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="佣金费率 (默认为万分之4.3):" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="CommissionRateTextBox" Text="0.00043" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="印花税率 (默认为万分之5):" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="StampDutyRateTextBox" Text="0.0005" Grid.Row="1" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+                
+                <TextBlock Text="是否免五 (不足5元不按5元收):" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox x:Name="IsFree5CheckBox" IsChecked="True" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- 二、首笔交易输入区 -->
+        <GroupBox Header="首笔交易信息" Grid.Row="1" Margin="0,0,0,10" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="操作类型:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <ComboBox x:Name="OperationModeComboBox" Grid.Column="1" Margin="0,0,0,5" SelectedIndex="0">
+                    <ComboBoxItem Content="先买后卖（正T）"/>
+                    <ComboBoxItem Content="先卖后买（倒T）"/>
+                </ComboBox>
+
+                <TextBlock Text="交易单价 (元):" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="PriceTextBox" Text="20.20" Grid.Row="1" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="交易股数 (股):" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="QuantityTextBox" Text="200" Grid.Row="2" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="预期做T净利 (元):" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#007ACC" FontWeight="Bold"/>
+                <TextBox x:Name="TargetProfitTextBox" Text="100" Grid.Row="3" Grid.Column="1" VerticalContentAlignment="Center" ToolTip="你希望这波做T净赚多少钱"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- 三、操作按钮区 -->
+        <Button Content="计算保本价及目标获利价" Grid.Row="2" Margin="0,0,0,15" Padding="10" 
+                Background="#007ACC" Foreground="White" FontSize="14" FontWeight="Bold"
+                Click="CalculateButton_Click"/>
+
+        <!-- 四、计算结果区 -->
+        <GroupBox Header="计算结果" Grid.Row="3" Padding="10" BorderBrush="#007ACC" BorderThickness="2">
+            <StackPanel>
+                <TextBlock Text="一买一卖总手续费预估: " FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="TotalFeeTextBlock" Text="--- 元" FontSize="18" Foreground="#555" Margin="0,0,0,10"/>
+
+                <TextBlock Text="保本目标价 (仅够交手续费): " FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="TargetPriceTextBlock" Text="--- 元" FontSize="20" Foreground="#E51400" Margin="0,0,0,10"/>
+
+                <TextBlock Text="🎯 达成预期净利的目标价: " FontSize="15" FontWeight="Bold"/>
+                <TextBlock x:Name="ProfitTargetPriceTextBlock" Text="--- 元" FontSize="24" Foreground="#008A00" FontWeight="Bold"/>
+            </StackPanel>
+        </GroupBox>
+        
+        <!-- 五、持仓分析区 (选填) -->
+        <GroupBox Header="持仓及降本分析 (选填参数)" Grid.Row="4" Margin="0,15,0,0" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="目前持仓均价 (元):" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="CostPriceTextBox" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="持有股份总数 (股):" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="HoldingQuantityTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="当前现价 (元):" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox x:Name="CurrentPriceTextBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center" ToolTip="留空则默认按上方首笔‘交易单价’估算盈亏"/>
+
+                <TextBlock Text="当前浮动盈亏(基于现价):" Grid.Row="3" VerticalAlignment="Center" Margin="0,10,10,5" Foreground="#555"/>
+                <TextBlock x:Name="HoldingPnLTextBlock" Text="---" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" Margin="0,10,0,5" FontWeight="Bold"/>
+
+                <TextBlock Text="若按目标价完成本次做T:" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,10,5" FontWeight="SemiBold"/>
+                <TextBlock Text="⬇️ 做T成功后全新持仓成本:" Grid.Row="5" VerticalAlignment="Center" Margin="0,5,10,0" Foreground="#007ACC" FontWeight="Bold"/>
+                <TextBlock x:Name="NewCostPriceTextBlock" Text="---" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Margin="0,5,0,0" FontSize="16" Foreground="#007ACC" FontWeight="Bold"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- 错误提示文本 -->
+        <TextBlock x:Name="ErrorTextBlock" Grid.Row="5" Foreground="Red" TextWrapping="Wrap" Margin="0,10,0,0" Visibility="Collapsed"/>
+    </Grid>
+    </ScrollViewer>
+</Window>
