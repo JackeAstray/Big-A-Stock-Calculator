@@ -66,7 +66,12 @@
                 <TextBox x:Name="PriceTextBox" Text="20.20" Grid.Row="1" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
 
                 <TextBlock Text="交易股数 (股):" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,10,5"/>
-                <TextBox x:Name="QuantityTextBox" Text="200" Grid.Row="2" Grid.Column="1" Margin="0,0,0,5" VerticalContentAlignment="Center"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBox x:Name="QuantityTextBox" Text="200" Width="80" VerticalContentAlignment="Center"/>
+                    <Button Content="全仓" Margin="5,0,0,0" Padding="10,0" Click="BtnFullPosition_Click" ToolTip="根据下方持仓总数自动填入" Background="#EEE"/>
+                    <Button Content="半仓" Margin="5,0,0,0" Padding="10,0" Click="BtnHalfPosition_Click" Background="#EEE"/>
+                    <Button Content="1/3仓" Margin="5,0,0,0" Padding="10,0" Click="BtnOneThirdPosition_Click" Background="#EEE"/>
+                </StackPanel>
 
                 <TextBlock Text="预期做T净利 (元):" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#007ACC" FontWeight="Bold"/>
                 <TextBox x:Name="TargetProfitTextBox" Text="100" Grid.Row="3" Grid.Column="1" VerticalContentAlignment="Center" ToolTip="你希望这波做T净赚多少钱"/>
@@ -74,15 +79,25 @@
         </GroupBox>
 
         <!-- 三、操作按钮区 -->
-        <Button Content="计算保本价及目标获利价" Grid.Row="2" Margin="0,0,0,15" Padding="10" 
-                Background="#007ACC" Foreground="White" FontSize="14" FontWeight="Bold"
-                Click="CalculateButton_Click"/>
+        <Grid Grid.Row="2" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="90"/>
+            </Grid.ColumnDefinitions>
+            <Button Content="计算保本价及目标获利价" Padding="10" 
+                    Background="#007ACC" Foreground="White" FontSize="14" FontWeight="Bold"
+                    Click="CalculateButton_Click"/>
+            <Button Content="一键清空" Grid.Column="1" Margin="10,0,0,0" Padding="10" 
+                    Background="#E51400" Foreground="White" FontSize="14" FontWeight="Bold"
+                    Click="ResetButton_Click" ToolTip="清空输入框但保留费率设置"/>
+        </Grid>
 
         <!-- 四、计算结果区 -->
         <GroupBox Header="计算结果" Grid.Row="3" Padding="10" BorderBrush="#007ACC" BorderThickness="2">
             <StackPanel>
                 <TextBlock Text="一买一卖总手续费预估: " FontSize="14" FontWeight="SemiBold"/>
-                <TextBlock x:Name="TotalFeeTextBlock" Text="--- 元" FontSize="18" Foreground="#555" Margin="0,0,0,10"/>
+                <TextBlock x:Name="TotalFeeTextBlock" Text="--- 元" FontSize="18" Foreground="#555" Margin="0,0,0,2"/>
+                <TextBlock x:Name="FeeDetailTextBlock" Text="(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)" FontSize="12" Foreground="#888" Margin="0,0,0,10"/>
 
                 <TextBlock Text="保本目标价 (仅够交手续费): " FontSize="14" FontWeight="SemiBold"/>
                 <TextBlock x:Name="TargetPriceTextBlock" Text="--- 元" FontSize="20" Foreground="#E51400" Margin="0,0,0,10"/>

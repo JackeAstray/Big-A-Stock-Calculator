@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Text.Json;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,6 +14,15 @@ using System.Windows.Shapes;
 
 namespace Big_A_Stock_Calculator
 {
+    public class UserSettings
+    {
+        public string CommissionRate { get; set; } = "0.00043";
+        public string StampDutyRate { get; set; } = "0.0005";
+        public bool IsFree5 { get; set; } = true;
+        public string CostPrice { get; set; } = "";
+        public string HoldingQuantity { get; set; } = "";
+    }
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -19,10 +30,57 @@ namespace Big_A_Stock_Calculator
     {
         // 固定的过户费率（双向收取），十万分之1
         private const decimal TransferFeeRate = 0.00001m;
+        private readonly string SettingFilePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
         public MainWindow()
         {
             InitializeComponent();
+            LoadSettings();
+            this.Closing += MainWindow_Closing;
+        }
+
+        private void LoadSettings()
+        {
+            try
+            {
+                if (File.Exists(SettingFilePath))
+                {
+                    string json = File.ReadAllText(SettingFilePath);
+                    var settings = JsonSerializer.Deserialize<UserSettings>(json);
+                    if (settings != null)
+                    {
+                        CommissionRateTextBox.Text = settings.CommissionRate;
+                        StampDutyRateTextBox.Text = settings.StampDutyRate;
+                        IsFree5CheckBox.IsChecked = settings.IsFree5;
+                        CostPriceTextBox.Text = settings.CostPrice;
+                        HoldingQuantityTextBox.Text = settings.HoldingQuantity;
+                    }
+                }
+            }
+            catch { /* 加载失败使用默认值 */ }
+        }
+
+        private void SaveSettings()
+        {
+            try
+            {
+                var settings = new UserSettings
+                {
+                    CommissionRate = CommissionRateTextBox.Text,
+                    StampDutyRate = StampDutyRateTextBox.Text,
+                    IsFree5 = IsFree5CheckBox.IsChecked ?? true,
+                    CostPrice = CostPriceTextBox.Text,
+                    HoldingQuantity = HoldingQuantityTextBox.Text
+                };
+                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(SettingFilePath, json);
+            }
+            catch { /* 保存失败忽略 */ }
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            SaveSettings();
         }
 
         private void CalculateButton_Click(object sender, RoutedEventArgs e)
@@ -48,6 +106,15 @@ namespace Big_A_Stock_Calculator
                 bool isPositiveT = OperationModeComboBox.SelectedIndex == 0; // 0为正T，1为倒T
                 bool isFree5 = IsFree5CheckBox.IsChecked == true;
 
+                // 倒T逻辑防呆校验：校验是不是数量超卖
+                if (!isPositiveT)
+                {
+                    if (int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && quantity > holdingQty)
+                    {
+                        throw new Exception("倒T为先卖后买，交易卖出股数不能大于当前的【持有股份总数】！");
+                    }
+                }
+
                 // 2. 调用核心计算逻辑
                 CalculateBreakeven(price, quantity, commissionRate, stampDutyRate, isPositiveT, isFree5, targetProfit);
             }
@@ -56,6 +123,7 @@ namespace Big_A_Stock_Calculator
                 ErrorTextBlock.Text = $"输入错误：{ex.Message}";
                 ErrorTextBlock.Visibility = Visibility.Visible;
                 TotalFeeTextBlock.Text = "--- 元";
+                if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)";
                 TargetPriceTextBlock.Text = "--- 元";
                 if (ProfitTargetPriceTextBlock != null) ProfitTargetPriceTextBlock.Text = "--- 元";
                 if (HoldingPnLTextBlock != null) HoldingPnLTextBlock.Text = "---";
@@ -78,11 +146,17 @@ namespace Big_A_Stock_Calculator
                 singleCommission = 5m;
             }
 
-            // 买入手续费 = 佣金 + 过户费
-            decimal buyFee = singleCommission + totalTurnover * TransferFeeRate;
+            // 【明细计算】
+            decimal buyTransferFee = totalTurnover * TransferFeeRate;
+            decimal buyFee = singleCommission + buyTransferFee;
             
-            // 卖出手续费 = 佣金 + 过户费 + 印花税
-            decimal sellFee = singleCommission + totalTurnover * TransferFeeRate + totalTurnover * stampDutyRate;
+            decimal sellTransferFee = buyTransferFee;
+            decimal sellStampDuty = totalTurnover * stampDutyRate;
+            decimal sellFee = singleCommission + sellTransferFee + sellStampDuty;
+
+            decimal totalCommission = singleCommission * 2;
+            decimal totalTransferFee = buyTransferFee + sellTransferFee;
+            decimal totalStampDuty = sellStampDuty;
 
             // 总手续费
             decimal totalFee = buyFee + sellFee;
@@ -111,12 +185,62 @@ namespace Big_A_Stock_Calculator
 
             // 更新UI结果显示
             TotalFeeTextBlock.Text = $"{Math.Round(totalFee, 2)} 元";
+            if (FeeDetailTextBlock != null)
+                FeeDetailTextBlock.Text = $"(明细：佣金 {Math.Round(totalCommission, 2)} 元 , 印花税 {Math.Round(totalStampDuty, 2)} 元 , 过户费 {Math.Round(totalTransferFee, 2)} 元)";
             TargetPriceTextBlock.Text = $"{Math.Round(targetPrice, 3)} 元";
             ProfitTargetPriceTextBlock.Text = $"{Math.Round(profitTargetPrice, 3)} 元";
 
             // 进行持仓扩展分析
             CalculateHoldingPnL(p, n, targetProfit);
         }
+
+        // ================ 各个额外快捷按钮事件 ================
+        
+        private void ResetButton_Click(object sender, RoutedEventArgs e)
+        {
+            ErrorTextBlock.Visibility = Visibility.Collapsed;
+            PriceTextBox.Text = "";
+            QuantityTextBox.Text = "";
+            TargetProfitTextBox.Text = "100";
+            
+            CostPriceTextBox.Text = "";
+            HoldingQuantityTextBox.Text = "";
+            CurrentPriceTextBox.Text = "";
+            
+            TotalFeeTextBlock.Text = "--- 元";
+            if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)";
+            TargetPriceTextBlock.Text = "--- 元";
+            ProfitTargetPriceTextBlock.Text = "--- 元";
+            
+            HoldingPnLTextBlock.Text = "---";
+            NewCostPriceTextBlock.Text = "---";
+        }
+
+        private void FillQuantity(double fraction)
+        {
+            if (int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && holdingQty > 0)
+            {
+                int targetQty = (int)(holdingQty * fraction);
+                targetQty = (targetQty / 100) * 100; // 向下取整到100的倍数
+                if (targetQty > 0)
+                {
+                    QuantityTextBox.Text = targetQty.ToString();
+                }
+                else
+                {
+                    MessageBox.Show("按该比例换算后不足100股无法交易。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else
+            {
+                MessageBox.Show("请先在下方【持仓及降本分析】区域内填写当前的【持有股份总数】！", "仓位计算提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void BtnFullPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0);
+        private void BtnHalfPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(0.5);
+        private void BtnOneThirdPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0 / 3.0);
+
 
         /// <summary>
         /// 分析做T完成后的持仓和成本变化
