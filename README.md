@@ -1,4 +1,4 @@
-# 📈 Big A Stock Calculator (A股做T保本计算器)
+# 📈 Big A Stock Calculator - Tech Edition (A股做T保本计算器)
 
 [中文介绍](#中文介绍) | [English Introduction](#english-introduction)
 
@@ -27,7 +27,15 @@
    - 填入当前持仓本金和数量，结合现价计算出当前浮动盈亏。
    - 预估本次做T操作成功后，原本的持仓均价能降低到多少（全新持仓成本）。
 
-5. **历史交易记录**
+5. **普通加仓补仓预测 (新增)**
+   - 填入加仓单价和加仓数量，动态计算包含所有手续费的加仓后全新均价。
+   - 直观显示加仓后成本的变化幅度，辅助补仓与做T结合决策。
+
+6. **极客暗黑主题 (Tech Edition) (新增)**
+   - 全新的 Tech Edition 视觉体验，采用极客黑、荧光绿、警示红等高对比度色彩搭配。
+   - 打造极具科幻感与量化交易终端质感的 UI，沉浸式交易体验并减少长时间盯盘的视觉疲劳。
+
+7. **历史交易记录**
    - 一键保存或清空计算记录，方便复盘和多次交易模拟。
 
 ### 🚀 如何使用
@@ -71,7 +79,15 @@
    - Provide your current holding cost and quantity to view immediate floating PNL.
    - Forecasts the **new average holding cost** assuming your planned T+0 trading operation is fully executed successfully.
 
-5. **Historical Records**
+5. **Averaging Down Prediction (New)**
+   - Input your add-on position price and quantity to dynamically calculate the new average holding cost (fees included).
+   - Visually indicates the cost difference to assist in position sizing and risk management.
+
+6. **Geek Dark Theme - Tech Edition (New)**
+   - A brand-new Tech Edition visual experience featuring a high-contrast dark aesthetic with neon green and red accents.
+   - Designed to mimic a sci-fi quantitative trading terminal, providing an immersive experience and reducing eye strain.
+
+7. **Historical Records**
    - Log calculation results with a single click and clear history easily for retrospective trading analysis.
 
 ### 🚀 How to Use

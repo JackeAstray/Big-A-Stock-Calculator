@@ -131,7 +131,7 @@ namespace Big_A_Stock_Calculator
                 ErrorTextBlock.Text = $"输入错误：{ex.Message}";
                 ErrorTextBlock.Visibility = Visibility.Visible;
                 TotalFeeTextBlock.Text = "--- 元";
-                if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)";
+                if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "[ 明细: 佣金 --- | 印花税 --- | 过户费 --- ]";
                 TargetPriceTextBlock.Text = "--- 元";
                 if (ProfitTargetPriceTextBlock != null) ProfitTargetPriceTextBlock.Text = "--- 元";
                 if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
@@ -200,7 +200,7 @@ namespace Big_A_Stock_Calculator
             // 更新UI结果显示
             TotalFeeTextBlock.Text = $"{Math.Round(totalFee, 2)} 元";
             if (FeeDetailTextBlock != null)
-                FeeDetailTextBlock.Text = $"(明细：佣金 {Math.Round(totalCommission, 2)} 元 , 印花税 {Math.Round(totalStampDuty, 2)} 元 , 过户费 {Math.Round(totalTransferFee, 2)} 元)";
+                FeeDetailTextBlock.Text = $"[ 明细: 佣金 {Math.Round(totalCommission, 2)} | 印花税 {Math.Round(totalStampDuty, 2)} | 过户费 {Math.Round(totalTransferFee, 2)} ]";
             TargetPriceTextBlock.Text = $"{Math.Round(targetPrice, 3)} 元";
             ProfitTargetPriceTextBlock.Text = $"{Math.Round(profitTargetPrice, 3)} 元";
             if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = $"{Math.Round(stopLossPrice, 3)} 元";
@@ -226,8 +226,13 @@ namespace Big_A_Stock_Calculator
             HoldingQuantityTextBox.Text = "";
             CurrentPriceTextBox.Text = "";
             
+            if (AddPositionPriceTextBox != null) AddPositionPriceTextBox.Text = "";
+            if (AddPositionQuantityTextBox != null) AddPositionQuantityTextBox.Text = "";
+            if (AddPositionNewCostTextBlock != null) AddPositionNewCostTextBlock.Text = "---";
+            if (AddPositionDiffTextBlock != null) AddPositionDiffTextBlock.Text = "";
+            
             TotalFeeTextBlock.Text = "--- 元";
-            if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)";
+            if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "[ 明细: 佣金 --- | 印花税 --- | 过户费 --- ]";
             TargetPriceTextBlock.Text = "--- 元";
             ProfitTargetPriceTextBlock.Text = "--- 元";
             if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
@@ -268,6 +273,77 @@ namespace Big_A_Stock_Calculator
             HistoryListBox.Items.Clear();
         }
 
+        private void AddPosition_Update(object sender, TextChangedEventArgs e)
+        {
+            if (AddPositionNewCostTextBlock == null) return;
+
+            // 1. Calculate PnL Live
+            if (HoldingPnLTextBlock != null)
+            {
+                if (decimal.TryParse(CostPriceTextBox?.Text, out decimal cp) && cp > 0 &&
+                    int.TryParse(HoldingQuantityTextBox?.Text, out int hq) && hq > 0 &&
+                    decimal.TryParse(string.IsNullOrWhiteSpace(CurrentPriceTextBox?.Text) ? PriceTextBox?.Text : CurrentPriceTextBox?.Text, out decimal rp) && rp > 0)
+                {
+                    decimal currentPnL = (rp - cp) * hq;
+                    HoldingPnLTextBlock.Text = $"{Math.Round(currentPnL, 2)} 元";
+                    HoldingPnLTextBlock.Foreground = currentPnL > 0 ? (Brush)FindResource("TechRed") : (currentPnL < 0 ? (Brush)FindResource("TechGreen") : Brushes.White);
+                }
+                else
+                {
+                    HoldingPnLTextBlock.Text = "---";
+                    HoldingPnLTextBlock.Foreground = Brushes.White;
+                }
+            }
+
+            // 2. Add position simulation
+            if (decimal.TryParse(CostPriceTextBox?.Text, out decimal currentCost) && currentCost > 0 &&
+                int.TryParse(HoldingQuantityTextBox?.Text, out int currentQty) && currentQty > 0 &&
+                decimal.TryParse(AddPositionPriceTextBox?.Text, out decimal addPrice) && addPrice > 0 &&
+                int.TryParse(AddPositionQuantityTextBox?.Text, out int addQty) && addQty > 0)
+            {
+                decimal commissionRate = decimal.TryParse(CommissionRateTextBox?.Text, out decimal cr) ? cr : 0.00025m;
+                bool isFree5 = IsFree5CheckBox?.IsChecked == true;
+
+                decimal turnover = addPrice * addQty;
+                decimal commission = turnover * commissionRate;
+                if (!isFree5 && commission < 5m) commission = 5m;
+
+                decimal transferFee = turnover * TransferFeeRate;
+
+                decimal totalCost = (currentCost * currentQty) + turnover + commission + transferFee;
+                int totalQty = currentQty + addQty;
+
+                decimal newAverageCost = totalCost / totalQty;
+                decimal diff = newAverageCost - currentCost;
+
+                AddPositionNewCostTextBlock.Text = $"{Math.Round(newAverageCost, 3)} 元";
+
+                if (AddPositionDiffTextBlock != null)
+                {
+                    if (diff > 0)
+                    {
+                        AddPositionDiffTextBlock.Text = $" (变高 {Math.Round(diff, 3)} 元)";
+                        AddPositionDiffTextBlock.Foreground = (Brush)FindResource("TechRed");
+                    }
+                    else if (diff < 0)
+                    {
+                        AddPositionDiffTextBlock.Text = $" (变低 {Math.Round(-diff, 3)} 元)";
+                        AddPositionDiffTextBlock.Foreground = (Brush)FindResource("TechGreen");
+                    }
+                    else
+                    {
+                        AddPositionDiffTextBlock.Text = $" (不变)";
+                        AddPositionDiffTextBlock.Foreground = Brushes.White;
+                    }
+                }
+            }
+            else
+            {
+                AddPositionNewCostTextBlock.Text = "---";
+                if (AddPositionDiffTextBlock != null) AddPositionDiffTextBlock.Text = "";
+            }
+        }
+
         private void FillQuantity(double fraction)
         {
             if (int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && holdingQty > 0)
@@ -300,7 +376,7 @@ namespace Big_A_Stock_Calculator
         private void CalculateHoldingPnL(decimal p, int n, decimal expectedProfit)
         {
             if (decimal.TryParse(CostPriceTextBox.Text, out decimal costPrice) && costPrice > 0 &&
-                int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && holdingQty >= n)
+                int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && holdingQty > 0)
             {
                 // 以用户当前输入的“当前现价”或者首笔交易单价估算当前的浮动盈亏状态
                 decimal referencePrice = p;
@@ -312,7 +388,7 @@ namespace Big_A_Stock_Calculator
 
                 decimal currentPnL = (referencePrice - costPrice) * holdingQty;
                 HoldingPnLTextBlock.Text = $"{Math.Round(currentPnL, 2)} 元";
-                HoldingPnLTextBlock.Foreground = currentPnL > 0 ? Brushes.Red : (currentPnL < 0 ? Brushes.Green : Brushes.Black);
+                HoldingPnLTextBlock.Foreground = currentPnL > 0 ? (Brush)FindResource("TechRed") : (currentPnL < 0 ? (Brush)FindResource("TechGreen") : Brushes.White);
 
                 // 核心指标：一旦完成这波 T 以后，新成本被摊薄为多少
                 // 原总成本 - 赚到的净利润现金 = 新的总成本。 除以总股数即为新成本价
@@ -324,7 +400,7 @@ namespace Big_A_Stock_Calculator
             else
             {
                 HoldingPnLTextBlock.Text = "---";
-                HoldingPnLTextBlock.Foreground = Brushes.Black;
+                HoldingPnLTextBlock.Foreground = Brushes.White;
                 NewCostPriceTextBlock.Text = "---";
             }
         }
