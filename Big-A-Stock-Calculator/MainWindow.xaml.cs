@@ -100,11 +100,19 @@ namespace Big_A_Stock_Calculator
                     throw new Exception("交易单价必须为大于0的数字");
                 if (!int.TryParse(QuantityTextBox.Text, out int quantity) || quantity <= 0 || quantity % 100 != 0)
                     throw new Exception("交易股数必须为100的整数倍");
-                if (!decimal.TryParse(TargetProfitTextBox.Text, out decimal targetProfit) || targetProfit < 0)
-                    throw new Exception("预期净利必须为大于等于0的数字");
+                if (!decimal.TryParse(TargetProfitTextBox.Text, out decimal targetProfitInput) || targetProfitInput < 0)
+                    throw new Exception("预期盈利必须为大于等于0的数字");
+                if (!decimal.TryParse(MaxLossTextBox.Text, out decimal maxLoss) || maxLoss < 0)
+                    throw new Exception("最大最大承受亏损必须为大于等于0的数字");
 
                 bool isPositiveT = OperationModeComboBox.SelectedIndex == 0; // 0为正T，1为倒T
                 bool isFree5 = IsFree5CheckBox.IsChecked == true;
+
+                decimal targetProfit = targetProfitInput;
+                if (ProfitModeComboBox.SelectedIndex == 1) // 按收益率
+                {
+                    targetProfit = (price * quantity) * (targetProfitInput / 100m);
+                }
 
                 // 倒T逻辑防呆校验：校验是不是数量超卖
                 if (!isPositiveT)
@@ -116,7 +124,7 @@ namespace Big_A_Stock_Calculator
                 }
 
                 // 2. 调用核心计算逻辑
-                CalculateBreakeven(price, quantity, commissionRate, stampDutyRate, isPositiveT, isFree5, targetProfit);
+                CalculateBreakeven(price, quantity, commissionRate, stampDutyRate, isPositiveT, isFree5, targetProfit, maxLoss);
             }
             catch (Exception ex)
             {
@@ -126,6 +134,7 @@ namespace Big_A_Stock_Calculator
                 if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)";
                 TargetPriceTextBlock.Text = "--- 元";
                 if (ProfitTargetPriceTextBlock != null) ProfitTargetPriceTextBlock.Text = "--- 元";
+                if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
                 if (HoldingPnLTextBlock != null) HoldingPnLTextBlock.Text = "---";
                 if (NewCostPriceTextBlock != null) NewCostPriceTextBlock.Text = "---";
             }
@@ -134,7 +143,7 @@ namespace Big_A_Stock_Calculator
         /// <summary>
         /// 核心计算逻辑：计算保本差价和纯利目标
         /// </summary>
-        private void CalculateBreakeven(decimal p, int n, decimal commissionRate, decimal stampDutyRate, bool isPositiveT, bool isFree5, decimal targetProfit)
+        private void CalculateBreakeven(decimal p, int n, decimal commissionRate, decimal stampDutyRate, bool isPositiveT, bool isFree5, decimal targetProfit, decimal maxLoss)
         {
             // 初步估算：假设两笔交易价格相近，以首笔金额为准估算双边费率
             decimal totalTurnover = p * n; 
@@ -165,22 +174,27 @@ namespace Big_A_Stock_Calculator
             decimal breakevenDiff = totalFee / n;
             // 达成纯利所需额外每股差价
             decimal profitDiff = targetProfit / n;
+            // 最大亏损允许的差价
+            decimal lossDiff = maxLoss / n;
 
             // 目标价计算
             decimal targetPrice;
             decimal profitTargetPrice;
+            decimal stopLossPrice;
 
             if (isPositiveT)
             {
                 // 正T(先买后卖)：卖出价需要 > 买入价 + 差价
                 targetPrice = p + breakevenDiff;
                 profitTargetPrice = p + breakevenDiff + profitDiff;
+                stopLossPrice = p + breakevenDiff - lossDiff;
             }
             else
             {
                 // 倒T(先卖后买)：买入价需要 < 卖出价 - 差价
                 targetPrice = p - breakevenDiff;
                 profitTargetPrice = p - breakevenDiff - profitDiff;
+                stopLossPrice = p - breakevenDiff + lossDiff;
             }
 
             // 更新UI结果显示
@@ -189,6 +203,7 @@ namespace Big_A_Stock_Calculator
                 FeeDetailTextBlock.Text = $"(明细：佣金 {Math.Round(totalCommission, 2)} 元 , 印花税 {Math.Round(totalStampDuty, 2)} 元 , 过户费 {Math.Round(totalTransferFee, 2)} 元)";
             TargetPriceTextBlock.Text = $"{Math.Round(targetPrice, 3)} 元";
             ProfitTargetPriceTextBlock.Text = $"{Math.Round(profitTargetPrice, 3)} 元";
+            if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = $"{Math.Round(stopLossPrice, 3)} 元";
 
             // 进行持仓扩展分析
             CalculateHoldingPnL(p, n, targetProfit);
@@ -202,6 +217,10 @@ namespace Big_A_Stock_Calculator
             PriceTextBox.Text = "";
             QuantityTextBox.Text = "";
             TargetProfitTextBox.Text = "100";
+            MaxLossTextBox.Text = "100";
+            YesterdayCloseTextBox.Text = "";
+            LimitUpTextBlock.Text = "---";
+            LimitDownTextBlock.Text = "---";
             
             CostPriceTextBox.Text = "";
             HoldingQuantityTextBox.Text = "";
@@ -211,9 +230,42 @@ namespace Big_A_Stock_Calculator
             if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "(明细：佣金 --- 元 , 印花税 --- 元 , 过户费 --- 元)";
             TargetPriceTextBlock.Text = "--- 元";
             ProfitTargetPriceTextBlock.Text = "--- 元";
+            if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
             
             HoldingPnLTextBlock.Text = "---";
             NewCostPriceTextBlock.Text = "---";
+        }
+
+        private void YesterdayClose_Update(object sender, RoutedEventArgs e)
+        {
+            if (LimitUpTextBlock == null || LimitDownTextBlock == null) return;
+            if (decimal.TryParse(YesterdayCloseTextBox?.Text, out decimal closePrice) && closePrice > 0)
+            {
+                decimal factor = BoardTypeComboBox.SelectedIndex == 0 ? 0.1m : 0.2m;
+                // A股标准四舍五入
+                decimal limitUp = Math.Round(closePrice * (1 + factor), 2, MidpointRounding.AwayFromZero);
+                decimal limitDown = Math.Round(closePrice * (1 - factor), 2, MidpointRounding.AwayFromZero);
+                LimitUpTextBlock.Text = limitUp.ToString("0.00");
+                LimitDownTextBlock.Text = limitDown.ToString("0.00");
+            }
+            else
+            {
+                LimitUpTextBlock.Text = "---";
+                LimitDownTextBlock.Text = "---";
+            }
+        }
+
+        private void SaveRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (TargetPriceTextBlock.Text.Contains("---")) return;
+            string mode = OperationModeComboBox.SelectedIndex == 0 ? "正T" : "倒T";
+            string record = $"[{DateTime.Now:HH:mm:ss}] {mode} | 价:{PriceTextBox.Text} 股:{QuantityTextBox.Text} | 目标:{ProfitTargetPriceTextBlock.Text} 止损:{StopLossPriceTextBlock.Text}";
+            HistoryListBox.Items.Insert(0, record);
+        }
+
+        private void ClearHistoryButton_Click(object sender, RoutedEventArgs e)
+        {
+            HistoryListBox.Items.Clear();
         }
 
         private void FillQuantity(double fraction)

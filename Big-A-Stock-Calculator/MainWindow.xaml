@@ -5,12 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Big_A_Stock_Calculator"
         mc:Ignorable="d"
-        Title="A股做T保本计算器" Height="680" Width="420" WindowStartupLocation="CenterScreen">
+        Title="A股做T保本计算器" Height="700" Width="850" WindowStartupLocation="CenterScreen">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -19,7 +21,7 @@
             </Grid.RowDefinitions>
 
         <!-- 一、参数设置区 -->
-        <GroupBox Header="费率设置 (系统默认参数)" Grid.Row="0" Margin="0,0,0,10" Padding="10">
+        <GroupBox Header="费率设置 (系统默认参数)" Grid.Row="0" Grid.Column="0" Margin="0,0,10,10" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -42,10 +44,32 @@
             </Grid>
         </GroupBox>
 
+        <!-- 涨跌停预测区 -->
+        <GroupBox Header="涨跌停预测" Grid.Row="1" Grid.Column="0" Margin="0,0,10,10" Padding="10">
+            <StackPanel>
+                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                     <TextBlock Text="昨日收盘价(元):" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                     <TextBox x:Name="YesterdayCloseTextBox" Width="80" TextChanged="YesterdayClose_Update" VerticalContentAlignment="Center"/>
+                     <TextBlock Text="板块:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                     <ComboBox x:Name="BoardTypeComboBox" SelectionChanged="YesterdayClose_Update" SelectedIndex="0" VerticalContentAlignment="Center">
+                         <ComboBoxItem Content="主板(10%)"/>
+                         <ComboBoxItem Content="创业/科创(20%)"/>
+                     </ComboBox>
+                 </StackPanel>
+                 <StackPanel Orientation="Horizontal">
+                     <TextBlock Text="涨停价:" Foreground="#E51400" Margin="0,0,5,0"/>
+                     <TextBlock x:Name="LimitUpTextBlock" Text="---" FontWeight="Bold" Foreground="#E51400" Width="60"/>
+                     <TextBlock Text="跌停价:" Foreground="#008A00" Margin="10,0,5,0"/>
+                     <TextBlock x:Name="LimitDownTextBlock" Text="---" FontWeight="Bold" Foreground="#008A00"/>
+                 </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
         <!-- 二、首笔交易输入区 -->
-        <GroupBox Header="首笔交易信息" Grid.Row="1" Margin="0,0,0,10" Padding="10">
+        <GroupBox Header="首笔交易信息" Grid.Row="2" Grid.Column="0" Margin="0,0,10,10" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -70,16 +94,25 @@
                     <TextBox x:Name="QuantityTextBox" Text="200" Width="80" VerticalContentAlignment="Center"/>
                     <Button Content="全仓" Margin="5,0,0,0" Padding="10,0" Click="BtnFullPosition_Click" ToolTip="根据下方持仓总数自动填入" Background="#EEE"/>
                     <Button Content="半仓" Margin="5,0,0,0" Padding="10,0" Click="BtnHalfPosition_Click" Background="#EEE"/>
-                    <Button Content="1/3仓" Margin="5,0,0,0" Padding="10,0" Click="BtnOneThirdPosition_Click" Background="#EEE"/>
+                    <Button Content="1/3合" Margin="5,0,0,0" Padding="5,0" Click="BtnOneThirdPosition_Click" Background="#EEE"/>
                 </StackPanel>
 
-                <TextBlock Text="预期做T净利 (元):" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#007ACC" FontWeight="Bold"/>
-                <TextBox x:Name="TargetProfitTextBox" Text="100" Grid.Row="3" Grid.Column="1" VerticalContentAlignment="Center" ToolTip="你希望这波做T净赚多少钱"/>
+                <TextBlock Text="预期盈利:" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,10,5" Foreground="#007ACC" FontWeight="Bold"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBox x:Name="TargetProfitTextBox" Text="100" Width="80" VerticalContentAlignment="Center"/>
+                    <ComboBox x:Name="ProfitModeComboBox" Margin="5,0,0,0" SelectedIndex="0" VerticalContentAlignment="Center" Width="100">
+                        <ComboBoxItem Content="固定金额(元)"/>
+                        <ComboBoxItem Content="收益率(%)"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <TextBlock Text="最大承受亏损(元):" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="Brown" FontWeight="Bold"/>
+                <TextBox x:Name="MaxLossTextBox" Text="100" Grid.Row="4" Grid.Column="1" VerticalContentAlignment="Center"/>
             </Grid>
         </GroupBox>
 
         <!-- 三、操作按钮区 -->
-        <Grid Grid.Row="2" Margin="0,0,0,15">
+        <Grid Grid.Row="3" Grid.Column="0" Margin="0,0,10,15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="90"/>
@@ -93,7 +126,7 @@
         </Grid>
 
         <!-- 四、计算结果区 -->
-        <GroupBox Header="计算结果" Grid.Row="3" Padding="10" BorderBrush="#007ACC" BorderThickness="2">
+        <GroupBox Header="计算结果" Grid.Row="0" Grid.Column="1" Margin="10,0,0,10" Padding="10" BorderBrush="#007ACC" BorderThickness="2">
             <StackPanel>
                 <TextBlock Text="一买一卖总手续费预估: " FontSize="14" FontWeight="SemiBold"/>
                 <TextBlock x:Name="TotalFeeTextBlock" Text="--- 元" FontSize="18" Foreground="#555" Margin="0,0,0,2"/>
@@ -103,12 +136,15 @@
                 <TextBlock x:Name="TargetPriceTextBlock" Text="--- 元" FontSize="20" Foreground="#E51400" Margin="0,0,0,10"/>
 
                 <TextBlock Text="🎯 达成预期净利的目标价: " FontSize="15" FontWeight="Bold"/>
-                <TextBlock x:Name="ProfitTargetPriceTextBlock" Text="--- 元" FontSize="24" Foreground="#008A00" FontWeight="Bold"/>
+                <TextBlock x:Name="ProfitTargetPriceTextBlock" Text="--- 元" FontSize="24" Foreground="#008A00" FontWeight="Bold" Margin="0,0,0,10"/>
+
+                <TextBlock Text="⚠️ 必须止损的离场价: " FontSize="15" FontWeight="Bold" Foreground="Brown"/>
+                <TextBlock x:Name="StopLossPriceTextBlock" Text="--- 元" FontSize="24" Foreground="Brown" FontWeight="Bold"/>
             </StackPanel>
         </GroupBox>
         
         <!-- 五、持仓分析区 (选填) -->
-        <GroupBox Header="持仓及降本分析 (选填参数)" Grid.Row="4" Margin="0,15,0,0" Padding="10">
+        <GroupBox Header="持仓及降本分析 (选填参数)" Grid.Row="1" Grid.Column="1" Margin="10,0,0,10" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -142,7 +178,22 @@
         </GroupBox>
 
         <!-- 错误提示文本 -->
-        <TextBlock x:Name="ErrorTextBlock" Grid.Row="5" Foreground="Red" TextWrapping="Wrap" Margin="0,10,0,0" Visibility="Collapsed"/>
+        <TextBlock x:Name="ErrorTextBlock" Grid.Row="2" Grid.Column="1" Margin="10,0,0,10" Foreground="Red" TextWrapping="Wrap" Visibility="Collapsed"/>
+
+        <!-- 历史交易记录 -->
+        <GroupBox Header="历史做T记录" Grid.Row="3" Grid.Column="1" Grid.RowSpan="2" Margin="10,0,0,0" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Button Content="保存当前计算结果" Click="SaveRecordButton_Click" Background="#EEE" Margin="0,0,0,5" Padding="5"/>
+                <ListBox x:Name="HistoryListBox" Grid.Row="1" AlternationCount="2"/>
+                <Button Content="清空历史记录" Click="ClearHistoryButton_Click" Grid.Row="2" Background="#EEE" Margin="0,5,0,0" Padding="5"/>
+            </Grid>
+        </GroupBox>
+
     </Grid>
     </ScrollViewer>
 </Window>
