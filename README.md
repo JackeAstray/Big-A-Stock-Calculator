@@ -40,6 +40,11 @@
 - .NET 10
 - XAML 界面设计
 
+### 📝 关于与免责声明
+- **作者**: [JackeAstray](https://github.com/JackeAstray)
+- **项目地址**: [Big-A-Stock-Calculator](https://github.com/JackeAstray/Big-A-Stock-Calculator)
+- **免责声明**: 本计算器预测与计算结果仅供学习、参考与复盘使用，**不构成任何投资建议**。股市有风险，投资需谨慎！
+
 ---
 
 <h2 id="english-introduction">🇬🇧 English Introduction</h2>
@@ -78,3 +83,8 @@
 - C# & WPF (Windows Presentation Foundation)
 - .NET 10
 - XAML UI
+
+### 📝 About & Disclaimer
+- **Author**: [JackeAstray](https://github.com/JackeAstray)
+- **Repo URL**: [Big-A-Stock-Calculator](https://github.com/JackeAstray/Big-A-Stock-Calculator)
+- **Disclaimer**: All predictions and calculations provided by this tool are for educational, reference, and retrospective analysis purposes only, and **do not constitute any investment advice**. The stock market is risky, and investments should be made with caution!
