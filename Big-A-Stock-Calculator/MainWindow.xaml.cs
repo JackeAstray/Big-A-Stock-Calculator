@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text;
 using System.Windows;
@@ -31,12 +33,65 @@ namespace Big_A_Stock_Calculator
         // 固定的过户费率（双向收取），十万分之1
         private const decimal TransferFeeRate = 0.00001m;
         private readonly string SettingFilePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+        private Process _llamaProcess = null;
 
         public MainWindow()
         {
             InitializeComponent();
+            LoadModels();
             LoadSettings();
             this.Closing += MainWindow_Closing;
+        }
+
+        private void LoadModels()
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string modelsDir = System.IO.Path.Combine(baseDir, "Models");
+            string appSettingsPath = System.IO.Path.Combine(baseDir, "appsettings.json");
+            
+            string defaultModel = "gemma-4-E4B-it-Q4_K_M.gguf";
+
+            if (File.Exists(appSettingsPath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(appSettingsPath);
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("ModelName", out var modelElement))
+                    {
+                        defaultModel = modelElement.GetString() ?? defaultModel;
+                    }
+                }
+                catch { }
+            }
+
+            if (Directory.Exists(modelsDir))
+            {
+                var files = Directory.GetFiles(modelsDir, "*.gguf");
+                foreach (var file in files)
+                {
+                    string fileName = System.IO.Path.GetFileName(file);
+                    ModelComboBox.Items.Add(fileName);
+                }
+            }
+
+            if (ModelComboBox.Items.Count > 0)
+            {
+                if (ModelComboBox.Items.Contains(defaultModel))
+                {
+                    ModelComboBox.SelectedItem = defaultModel;
+                }
+                else
+                {
+                    ModelComboBox.SelectedIndex = 0;
+                }
+            }
+            else
+            {
+                ModelComboBox.Items.Add("无可用模型 (*.gguf)");
+                ModelComboBox.SelectedIndex = 0;
+                ModelComboBox.IsEnabled = false;
+            }
         }
 
         private void LoadSettings()
@@ -81,6 +136,15 @@ namespace Big_A_Stock_Calculator
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             SaveSettings();
+            try 
+            {
+                if (_llamaProcess != null && !_llamaProcess.HasExited)
+                {
+                    _llamaProcess.Kill(true);
+                    _llamaProcess.Dispose();
+                }
+            } 
+            catch { }
         }
 
         private void CalculateButton_Click(object sender, RoutedEventArgs e)
@@ -263,14 +327,174 @@ namespace Big_A_Stock_Calculator
         private void SaveRecordButton_Click(object sender, RoutedEventArgs e)
         {
             if (TargetPriceTextBlock.Text.Contains("---")) return;
-            string mode = OperationModeComboBox.SelectedIndex == 0 ? "正T" : "倒T";
-            string record = $"[{DateTime.Now:HH:mm:ss}] {mode} | 价:{PriceTextBox.Text} 股:{QuantityTextBox.Text} | 目标:{ProfitTargetPriceTextBlock.Text} 止损:{StopLossPriceTextBlock.Text}";
-            HistoryListBox.Items.Insert(0, record);
+
+            string mode = OperationModeComboBox.SelectedIndex == 0 ? "📈 正T(先买后卖)" : "📉 倒T(先卖后买)";
+            string price = PriceTextBox.Text;
+            string qty = QuantityTextBox.Text;
+            string target = ProfitTargetPriceTextBlock.Text;
+            string loss = StopLossPriceTextBlock.Text;
+            string breakeven = TargetPriceTextBlock.Text;
+            string fee = TotalFeeTextBlock.Text;
+            
+            string expectedProfit = TargetProfitTextBox.Text;
+            if (ProfitModeComboBox.SelectedIndex == 1) expectedProfit += "%"; else expectedProfit += "元";
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"============== 策略卡片 ==============");
+            sb.AppendLine($"[时间] {DateTime.Now:HH:mm:ss}");
+            sb.AppendLine($"[方向] {mode}");
+            sb.AppendLine($"[基准] 单价: {price} 元 | 数量: {qty} 股");
+            sb.AppendLine($"[预期] 目标利润: {expectedProfit} (预估手续费 {fee})");
+            sb.AppendLine($"--------------------------------------");
+            sb.AppendLine($"🎯 目标止盈挂单价: {target}");
+            sb.AppendLine($"🛡️ 保本撤退基准价: {breakeven}");
+            sb.AppendLine($"⚠️ 极限止损离场价: {loss}");
+
+            if (!NewCostPriceTextBlock.Text.Contains("---"))
+            {
+                sb.AppendLine($"✨ 策略成功后，新持仓均价将被降至: {NewCostPriceTextBlock.Text}");
+            }
+            sb.AppendLine($"======================================");
+
+            HistoryListBox.Items.Insert(0, sb.ToString());
         }
 
         private void ClearHistoryButton_Click(object sender, RoutedEventArgs e)
         {
             HistoryListBox.Items.Clear();
+        }
+
+        private async void AIAssistantButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string mode = OperationModeComboBox.SelectedIndex == 0 ? "正T(先买后卖)" : "倒T(先卖后买)";
+                string price = PriceTextBox.Text;
+                string qty = QuantityTextBox.Text;
+                string currentCost = CostPriceTextBox.Text;
+                string holdingQty = HoldingQuantityTextBox.Text;
+                string target = ProfitTargetPriceTextBlock.Text;
+                
+                string prompt = $"我正在做A股，当前持有股数{holdingQty}，成本价{currentCost}元。我想做{mode}，计划交易价格{price}，交易数量{qty}。目前的止盈目标是{target}。请简短地给一些交易建议。";
+
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string llamaServerPath = System.IO.Path.Combine(baseDir, "Exe", "llama-server.exe");
+                
+                string selectedModelName = ModelComboBox.SelectedItem?.ToString();
+                if (string.IsNullOrEmpty(selectedModelName) || selectedModelName.Contains("无可用模型"))
+                {
+                    MessageBox.Show("请先在下拉框选择有效的模型文件！", "模型未选择", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                
+                string modelPath = System.IO.Path.Combine(baseDir, "Models", selectedModelName);
+                string appSettingsPath = System.IO.Path.Combine(baseDir, "appsettings.json");
+
+                int port = 8080;
+                if (File.Exists(appSettingsPath))
+                {
+                    try
+                    {
+                        var json = File.ReadAllText(appSettingsPath);
+                        var doc = JsonDocument.Parse(json);
+                        if (doc.RootElement.TryGetProperty("LlamaServerPort", out var portElement))
+                        {
+                            port = portElement.GetInt32();
+                        }
+                    }
+                    catch { }
+                }
+
+                if (!File.Exists(llamaServerPath) || !File.Exists(modelPath))
+                {
+                    MessageBox.Show("未找到模型文件或 llama-server.exe，请查阅 README 添加模型及组件！", "AI 组件缺失", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var button = sender as Button;
+                if (button != null) button.IsEnabled = false;
+
+                // 检查是否已经启动了后台进程
+                if (_llamaProcess == null || _llamaProcess.HasExited)
+                {
+                    // 额外检查系统的端口上有无同名进程在跑，如没有就自己跑
+                    var processes = Process.GetProcessesByName("llama-server");
+                    if (processes.Length == 0)
+                    {
+                        HistoryListBox.Items.Insert(0, "[启动 AI 服务器引擎中... 模型加载需要十多秒，请稍候]");
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = llamaServerPath,
+                            Arguments = $"-m \"{modelPath}\" --port {port} -c 2048",
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        };
+                        _llamaProcess = Process.Start(startInfo);
+                        
+                        // 预留 10-15 秒让模型加载进内存
+                        int waitLoops = 15;
+                        while (waitLoops > 0 && !_llamaProcess.HasExited)
+                        {
+                            await System.Threading.Tasks.Task.Delay(1000);
+                            waitLoops--;
+                        }
+                        HistoryListBox.Items.RemoveAt(0);
+                    }
+                }
+
+                // Append status indicating it's thinking
+                HistoryListBox.Items.Insert(0, "[AI 思考中，请稍候...]");
+
+                string result = "AI 请求失败。";
+                try
+                {
+                    using var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromMinutes(2);
+                    string apiUrl = $"http://127.0.0.1:{port}/completion";
+                    var reqBody = new
+                    {
+                        prompt = prompt,
+                        n_predict = 256
+                    };
+                    string jsonContent = JsonSerializer.Serialize(reqBody);
+                    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                    var response = await client.PostAsync(apiUrl, content);
+                    response.EnsureSuccessStatusCode();
+
+                    var respString = await response.Content.ReadAsStringAsync();
+                    using var jsonDoc = JsonDocument.Parse(respString);
+                    result = jsonDoc.RootElement.GetProperty("content").GetString();
+                }
+                catch (Exception ex)
+                {
+                    result = "调用本地服务器失败: " + ex.Message;
+                }
+
+                if (button != null) button.IsEnabled = true;
+                if (HistoryListBox.Items.Count > 0 && HistoryListBox.Items[0].ToString().Contains("[AI 思考中"))
+                {
+                    HistoryListBox.Items.RemoveAt(0);
+                }
+                
+                // Add AI response to history
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine($"============== AI 建议 ==============");
+                sb.AppendLine($"[时间] {DateTime.Now:HH:mm:ss}");
+                sb.AppendLine(result?.Trim() ?? "");
+                sb.AppendLine($"======================================");
+                HistoryListBox.Items.Insert(0, sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"AI调用出现异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                var btn = sender as Button;
+                if (btn != null) btn.IsEnabled = true;
+                if (HistoryListBox.Items.Count > 0 && HistoryListBox.Items[0].ToString().Contains("[AI 思考中"))
+                {
+                    HistoryListBox.Items.RemoveAt(0);
+                }
+            }
         }
 
         private void AddPosition_Update(object sender, TextChangedEventArgs e)

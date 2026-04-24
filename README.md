@@ -27,20 +27,37 @@
    - 填入当前持仓本金和数量，结合现价计算出当前浮动盈亏。
    - 预估本次做T操作成功后，原本的持仓均价能降低到多少（全新持仓成本）。
 
-5. **普通加仓补仓预测 (新增)**
+5. **AI 智能建议 (基于本地大模型)**
+- 接入了本地大模型引擎（llama-server ），可脱机运行进行本地化智能分析。
+- 用户只需点击“AI 智能决策”，计算器即可将当前参数与大模型对接，提供专属投顾建议。
+
+6. **普通加仓补仓预测 (新增)**
    - 填入加仓单价和加仓数量，动态计算包含所有手续费的加仓后全新均价。
    - 直观显示加仓后成本的变化幅度，辅助补仓与做T结合决策。
 
-6. **极客暗黑主题 (Tech Edition) (新增)**
+7. **极客暗黑主题 (Tech Edition) (新增)**
    - 全新的 Tech Edition 视觉体验，采用极客黑、荧光绿、警示红等高对比度色彩搭配。
    - 打造极具科幻感与量化交易终端质感的 UI，沉浸式交易体验并减少长时间盯盘的视觉疲劳。
 
-7. **历史交易记录**
+8. **历史交易记录**
    - 一键保存或清空计算记录，方便复盘和多次交易模拟。
+
+### 🤖 添加/更换 AI 模型
+本项目默认支持本地运行大语言模型（如 [Gemma](https://github.com/google/gemma)）以提供智能建议。
+1. **下载模型**: 
+   - 官方推荐模型: `gemma-4-E4B-it-Q4_K_M.gguf`
+   - 下载地址: [https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/tree/main](https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/tree/main)
+2. **放置模型**: 
+   - 将下载好的 `.gguf` 文件放入本项目根目录的 `Models` 文件夹下。
+3. **更换配置模型**: 
+   - 您可以直接下载其他格式兼容的 `.gguf` 模型并放入 `Models` 文件夹内。
+   - 重新打开程序后，在界面的 AI 功能区域能**直接通过下拉框选择**您需要的模型。
+   - 此外，您也可以在 `appsettings.json` 文件中配置 `ModelName` 指定默认模型，或配置 `LlamaServerPort` 修改端口。
+   - 确保 `Exe` 及 `Dll` 文件夹具有 `llama.cpp` (`llama-server.exe`) 相关的支持运行文件。
 
 ### 🚀 如何使用
 1. 下载或克隆本源码仓库。
-2. 使用 Visual Studio 2022 或基于 .NET 的现代 IDE 打开解决方案。
+2. 使用 Visual Studio 2026 或基于 .NET 的现代 IDE 打开解决方案。
 3. 编译并运行项目即可使用。
 
 ### 🛠 技术栈
@@ -79,16 +96,33 @@
    - Provide your current holding cost and quantity to view immediate floating PNL.
    - Forecasts the **new average holding cost** assuming your planned T+0 trading operation is fully executed successfully.
 
-5. **Averaging Down Prediction (New)**
+5. **AI Smart Suggestions (Local LLM Powered)**
+   - Integrated with local large language model engines (`llama-server`), running completely offline for localized smart analysis.
+   - Simply click "AI Smart Decision", and the calculator generates tailored trading advice combining your inputs and the LLM.
+
+6. **Averaging Down Prediction (New)**
    - Input your add-on position price and quantity to dynamically calculate the new average holding cost (fees included).
    - Visually indicates the cost difference to assist in position sizing and risk management.
 
-6. **Geek Dark Theme - Tech Edition (New)**
+7. **Geek Dark Theme - Tech Edition (New)**
    - A brand-new Tech Edition visual experience featuring a high-contrast dark aesthetic with neon green and red accents.
    - Designed to mimic a sci-fi quantitative trading terminal, providing an immersive experience and reducing eye strain.
 
-7. **Historical Records**
+8. **Historical Records**
    - Log calculation results with a single click and clear history easily for retrospective trading analysis.
+
+### 🤖 Adding/Changing AI Models
+This project supports local models like [Gemma](https://github.com/google/gemma) out-of-the-box.
+1. **Download Model**: 
+   - Recommended: `gemma-4-E4B-it-Q4_K_M.gguf`
+   - Download Link: [https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/tree/main](https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/tree/main)
+2. **Place Model**: 
+   - Place the downloaded `.gguf` file into the `Models` folder in the project's root directory.
+3. **Change or Setup Model**: 
+   - You can download other `.gguf` models and place them inside the `Models` directory.
+   - Launch the program, and you can **select a loaded model directly from the UI dropdown**. 
+   - You can also update `appsettings.json` to define a default `ModelName` and `LlamaServerPort`.
+   - Ensure the `Exe` and `Dll` folders contain the `llama.cpp` (`llama-server.exe`) dependencies.
 
 ### 🚀 How to Use
 1. Clone or download this repository.
