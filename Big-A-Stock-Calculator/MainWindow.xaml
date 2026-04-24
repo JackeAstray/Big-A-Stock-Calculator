@@ -5,27 +5,27 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Big_A_Stock_Calculator"
         mc:Ignorable="d"
-        Title="A股做T保本计算器 - Tech Edition" Height="820" Width="920" WindowStartupLocation="CenterScreen"
-        FontFamily="Consolas, Microsoft YaHei, Segoe UI" Background="#0B0C10">
-    
+        Title="A股做T保本计算器 - Tech Edition" Height="820" Width="1300" WindowStartupLocation="CenterScreen"
+        FontFamily="Consolas, Microsoft YaHei, Segoe UI" Background="#040914">
+
     <Window.Resources>
         <!-- 色彩定义 -->
-        <SolidColorBrush x:Key="TechBg" Color="#0B0C10"/>
-        <SolidColorBrush x:Key="PanelBg" Color="#121A14"/>
-        <SolidColorBrush x:Key="Accent" Color="#00FF41"/>
-        <SolidColorBrush x:Key="AccentDark" Color="#008F11"/>
-        <SolidColorBrush x:Key="TextLight" Color="#C5C6C7"/>
+        <SolidColorBrush x:Key="TechBg" Color="#040914"/>
+        <SolidColorBrush x:Key="PanelBg" Color="#0D1B2A"/>
+        <SolidColorBrush x:Key="Accent" Color="#00F0FF"/>
+        <SolidColorBrush x:Key="AccentDark" Color="#0077B6"/>
+        <SolidColorBrush x:Key="TextLight" Color="#E0F7FA"/>
         <SolidColorBrush x:Key="TextWhite" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="InputBg" Color="#0B0C10"/>
-        <SolidColorBrush x:Key="TechRed" Color="#FF4C4C"/>
-        <SolidColorBrush x:Key="TechGreen" Color="#00FF66"/>
-        
+        <SolidColorBrush x:Key="InputBg" Color="#040914"/>
+        <SolidColorBrush x:Key="TechRed" Color="#FF2A6D"/>
+        <SolidColorBrush x:Key="TechGreen" Color="#05FFA1"/>
+
         <!-- 全局样式 -->
         <Style TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{StaticResource TextLight}"/>
         </Style>
-        
+
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="28"/>
             <Setter Property="Padding" Value="6,4"/>
@@ -38,7 +38,7 @@
             <Setter Property="CaretBrush" Value="{StaticResource Accent}"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
-        
+
         <Style TargetType="ComboBox">
             <Setter Property="Height" Value="28"/>
             <Setter Property="Padding" Value="6,4"/>
@@ -67,7 +67,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
                         </Border>
                     </ControlTemplate>
@@ -83,21 +83,21 @@
         </Style>
 
         <Style TargetType="Button" x:Key="ActionTechButton" BasedOn="{StaticResource TechButton}">
-            <Setter Property="Background" Value="#1A3A3A"/>
+            <Setter Property="Background" Value="#0B2B4A"/>
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="FontSize" Value="15"/>
         </Style>
         <Style TargetType="Button" x:Key="DangerTechButton" BasedOn="{StaticResource TechButton}">
-            <Setter Property="BorderBrush" Value="#FF4C4C"/>
-            <Setter Property="Foreground" Value="#FF4C4C"/>
+            <Setter Property="BorderBrush" Value="#FF2A6D"/>
+            <Setter Property="Foreground" Value="#FF2A6D"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FF4C4C"/>
+                    <Setter Property="Background" Value="#FF2A6D"/>
                     <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
-        
+
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextLight}"/>
         </Style>
@@ -108,11 +108,12 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="1.1*"/>
+                <ColumnDefinition Width="0.9*"/>
             </Grid.ColumnDefinitions>
 
             <!-- ================= 左侧：输入及参数区 ================= -->
             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                
+
                 <!-- 1. 系统及行情参数 -->
                 <GroupBox Header="[ 系统 ] 费率与行情环境">
                     <Grid>
@@ -126,35 +127,36 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="15"/>
                             <ColumnDefinition Width="70"/>
                             <ColumnDefinition Width="1*"/>
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Text="昨日收盘:" Grid.Row="0" Grid.Column="0" FontFamily="Consolas"/>
                         <TextBox x:Name="YesterdayCloseTextBox" Grid.Row="0" Grid.Column="1" TextChanged="YesterdayClose_Update"/>
-                        
-                        <TextBlock Text="板块:" Grid.Row="0" Grid.Column="2" FontFamily="Consolas" Margin="10,0,0,0"/>
-                        <ComboBox x:Name="BoardTypeComboBox" Grid.Row="0" Grid.Column="3" SelectionChanged="YesterdayClose_Update" SelectedIndex="0">
+
+                        <TextBlock Text="板块:" Grid.Row="0" Grid.Column="3" FontFamily="Consolas"/>
+                        <ComboBox x:Name="BoardTypeComboBox" Grid.Row="0" Grid.Column="4" SelectionChanged="YesterdayClose_Update" SelectedIndex="0">
                             <ComboBoxItem Content="主板(10%)"/>
                             <ComboBoxItem Content="科创/创业"/>
                         </ComboBox>
 
-                        <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,8">
+                        <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Orientation="Horizontal" Margin="0,4,0,8">
                             <TextBlock Text="涨停价:" Foreground="{StaticResource TechRed}" FontFamily="Consolas"/>
                             <TextBlock x:Name="LimitUpTextBlock" Text="---" FontWeight="Bold" Foreground="{StaticResource TechRed}" Width="65" FontSize="15" Margin="5,0,15,0"/>
                             <TextBlock Text="跌停价:" Foreground="{StaticResource TechGreen}" FontFamily="Consolas"/>
                             <TextBlock x:Name="LimitDownTextBlock" Text="---" FontWeight="Bold" Foreground="{StaticResource TechGreen}" FontSize="15" Margin="5,0,0,0"/>
                         </StackPanel>
 
-                        <Border Grid.Row="2" Grid.ColumnSpan="4" BorderThickness="0,1,0,0" BorderBrush="{StaticResource AccentDark}" Margin="0,5,0,5"/>
+                        <Border Grid.Row="2" Grid.ColumnSpan="5" BorderThickness="0,1,0,0" BorderBrush="{StaticResource AccentDark}" Margin="0,5,0,5"/>
 
                         <TextBlock Text="佣金费率:" Grid.Row="3" Grid.Column="0" FontFamily="Consolas"/>
-                        <TextBox x:Name="CommissionRateTextBox" Text="0.00043" Grid.Row="3" Grid.Column="1" Margin="0,0,5,0"/>
+                        <TextBox x:Name="CommissionRateTextBox" Text="0.00043" Grid.Row="3" Grid.Column="1"/>
 
-                        <TextBlock Text="印花税率:" Grid.Row="3" Grid.Column="2" FontFamily="Consolas"/>
-                        <TextBox x:Name="StampDutyRateTextBox" Text="0.0005" Grid.Row="3" Grid.Column="3"/>
+                        <TextBlock Text="印花税率:" Grid.Row="3" Grid.Column="3" FontFamily="Consolas"/>
+                        <TextBox x:Name="StampDutyRateTextBox" Text="0.0005" Grid.Row="3" Grid.Column="4"/>
 
-                        <StackPanel Grid.Row="4" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,8,0,0">
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="5" Orientation="Horizontal" Margin="0,8,0,0">
                             <TextBlock Text="免五规则:" FontFamily="Consolas" Margin="0,0,10,0"/>
                             <CheckBox x:Name="IsFree5CheckBox" IsChecked="True" Content="启用" VerticalAlignment="Center"/>
                         </StackPanel>
@@ -171,21 +173,22 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="70"/>
                             <ColumnDefinition Width="1*"/>
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Text="持仓均价:" Grid.Row="0" Grid.Column="0" FontFamily="Consolas"/>
-                        <TextBox x:Name="CostPriceTextBox" Grid.Row="0" Grid.Column="1" TextChanged="AddPosition_Update" Margin="0,0,10,0"/>
+                        <TextBox x:Name="CostPriceTextBox" Grid.Row="0" Grid.Column="1" TextChanged="AddPosition_Update"/>
 
-                        <TextBlock Text="持股总量:" Grid.Row="0" Grid.Column="2" FontFamily="Consolas"/>
-                        <TextBox x:Name="HoldingQuantityTextBox" Grid.Row="0" Grid.Column="3" TextChanged="AddPosition_Update"/>
+                        <TextBlock Text="持股总量:" Grid.Row="0" Grid.Column="3" FontFamily="Consolas"/>
+                        <TextBox x:Name="HoldingQuantityTextBox" Grid.Row="0" Grid.Column="4" TextChanged="AddPosition_Update"/>
 
                         <TextBlock Text="当前价格:" Grid.Row="1" Grid.Column="0" FontFamily="Consolas"/>
-                        <TextBox x:Name="CurrentPriceTextBox" Grid.Row="1" Grid.Column="1" TextChanged="AddPosition_Update" Margin="0,0,10,0"/>
+                        <TextBox x:Name="CurrentPriceTextBox" Grid.Row="1" Grid.Column="1" TextChanged="AddPosition_Update"/>
 
-                        <TextBlock Text="浮动盈亏:" Grid.Row="1" Grid.Column="2" FontFamily="Consolas"/>
-                        <TextBlock x:Name="HoldingPnLTextBlock" Text="---" Grid.Row="1" Grid.Column="3" FontWeight="Bold" Foreground="{StaticResource TextWhite}"/>
+                        <TextBlock Text="浮动盈亏:" Grid.Row="1" Grid.Column="3" FontFamily="Consolas"/>
+                        <TextBlock x:Name="HoldingPnLTextBlock" Text="---" Grid.Row="1" Grid.Column="4" FontWeight="Bold" Foreground="{StaticResource TextWhite}"/>
                     </Grid>
                 </GroupBox>
 
@@ -201,7 +204,7 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
@@ -215,25 +218,35 @@
                         <TextBox x:Name="PriceTextBox" Text="20.20" Grid.Row="1" Grid.Column="1" TextChanged="AddPosition_Update"/>
 
                         <TextBlock Text="交易股数:" Grid.Row="2" Margin="0,0,10,0" FontFamily="Consolas"/>
-                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,4">
-                            <TextBox x:Name="QuantityTextBox" Text="200" Width="65"/>
-                            <Button Content="全仓" Margin="5,0,0,0" Padding="5,2" Click="BtnFullPosition_Click" Style="{StaticResource TechButton}"/>
-                            <Button Content="半仓" Margin="5,0,0,0" Padding="5,2" Click="BtnHalfPosition_Click" Style="{StaticResource TechButton}"/>
-                            <Button Content="1/3仓" Margin="5,0,0,0" Padding="5,2" Click="BtnOneThirdPosition_Click" Style="{StaticResource TechButton}"/>
-                        </StackPanel>
+                        <Grid Grid.Row="2" Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="QuantityTextBox" Text="200" Grid.Column="0"/>
+                            <Button Content="全仓" Grid.Column="1" Margin="5,4,0,4" Padding="8,2" Click="BtnFullPosition_Click" Style="{StaticResource TechButton}"/>
+                            <Button Content="半仓" Grid.Column="2" Margin="5,4,0,4" Padding="8,2" Click="BtnHalfPosition_Click" Style="{StaticResource TechButton}"/>
+                            <Button Content="1/3仓" Grid.Column="3" Margin="5,4,0,4" Padding="8,2" Click="BtnOneThirdPosition_Click" Style="{StaticResource TechButton}"/>
+                        </Grid>
 
                         <TextBlock Text="目标利润:" Grid.Row="3" Margin="0,0,10,0" Foreground="{StaticResource TechRed}" FontFamily="Consolas"/>
-                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,4">
-                            <TextBox x:Name="TargetProfitTextBox" Text="100" Width="65"/>
-                            <ComboBox x:Name="ProfitModeComboBox" Margin="5,0,0,0" SelectedIndex="0" Width="95">
-                            <ComboBoxItem Content="固定(元)"/>
-                            <ComboBoxItem Content="比例(%)"/>
-                        </ComboBox>
-                        </StackPanel>
+                        <Grid Grid.Row="3" Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TargetProfitTextBox" Text="100" Grid.Column="0"/>
+                            <ComboBox x:Name="ProfitModeComboBox" Grid.Column="1" Margin="5,4,0,4" SelectedIndex="0" Width="85">
+                                <ComboBoxItem Content="固定(元)"/>
+                                <ComboBoxItem Content="比例(%)"/>
+                            </ComboBox>
+                        </Grid>
 
                         <TextBlock Text="最大亏损:" Grid.Row="4" Margin="0,0,10,0" Foreground="{StaticResource TechGreen}" FontFamily="Consolas"/>
                         <TextBox x:Name="MaxLossTextBox" Text="100" Grid.Row="4" Grid.Column="1" Foreground="{StaticResource TechGreen}" BorderBrush="{StaticResource TechGreen}"/>
-                        
+
                         <!-- 操作按钮区 -->
                         <Grid Grid.Row="5" Grid.ColumnSpan="2" Margin="0,15,0,5">
                             <Grid.ColumnDefinitions>
@@ -254,7 +267,7 @@
 
             <!-- ================= 右侧：结果及分析区 ================= -->
             <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                
+
                 <!-- 四、T+0 计算结果区 -->
                 <GroupBox Header="[ 结果 ] T+0 策略矩阵" BorderThickness="2" BorderBrush="{StaticResource Accent}">
                     <StackPanel Margin="5">
@@ -262,33 +275,33 @@
                         <TextBlock x:Name="TotalFeeTextBlock" Text="--- 元" FontSize="18" Foreground="{StaticResource TextWhite}" Margin="0,2,0,2"/>
                         <TextBlock x:Name="FeeDetailTextBlock" Text="[ 明细: 佣金 --- | 印花税 --- | 过户费 --- ]" FontSize="12" Foreground="{StaticResource AccentDark}" Margin="0,0,0,12" FontFamily="Consolas"/>
 
-                        <Border Background="#112211" BorderBrush="#FFD700" BorderThickness="1" CornerRadius="2" Padding="10" Margin="0,0,0,10">
-                             <StackPanel>
+                        <Border Background="#10192A" BorderBrush="#FFD700" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                            <StackPanel>
                                 <TextBlock Text="[*] 保本撤退价 (仅平手续费): " FontSize="14" FontWeight="Bold" Foreground="#FFD700" FontFamily="Consolas"/>
                                 <TextBlock x:Name="TargetPriceTextBlock" Text="--- 元" FontSize="20" Foreground="#FFD700" FontWeight="Bold" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Background="#221111" BorderBrush="{StaticResource TechRed}" BorderThickness="1" CornerRadius="2" Padding="10" Margin="0,0,0,10">
+                        <Border Background="#2A0A18" BorderBrush="{StaticResource TechRed}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                             <StackPanel>
                                 <TextBlock Text="[+] 止盈目标价: " FontSize="14" FontWeight="Bold" Foreground="{StaticResource TechRed}" FontFamily="Consolas"/>
                                 <TextBlock x:Name="ProfitTargetPriceTextBlock" Text="--- 元" FontSize="26" Foreground="{StaticResource TechRed}" FontWeight="Bold" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Background="#112211" BorderBrush="{StaticResource TechGreen}" BorderThickness="1" CornerRadius="2" Padding="10" Margin="0,0,0,10">
+                        <Border Background="#0A2A20" BorderBrush="{StaticResource TechGreen}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                             <StackPanel>
                                 <TextBlock Text="[-] 止损离场价: " FontSize="14" FontWeight="Bold" Foreground="{StaticResource TechGreen}" FontFamily="Consolas"/>
                                 <TextBlock x:Name="StopLossPriceTextBlock" Text="--- 元" FontSize="22" Foreground="{StaticResource TechGreen}" FontWeight="Bold" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
-                        
+
                         <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource AccentDark}" Margin="0,5,0,10"/>
                         <TextBlock Text=">>> 若做T成功后新成本:" Foreground="{StaticResource Accent}" FontSize="15" FontWeight="Bold" FontFamily="Consolas"/>
                         <TextBlock x:Name="NewCostPriceTextBlock" Text="---" Margin="0,5,0,0" FontSize="22" Foreground="{StaticResource Accent}" FontWeight="Bold"/>
 
                         <!-- 错误提示文本 -->
-                        <TextBlock x:Name="ErrorTextBlock" Foreground="#FF0033" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,10,0,0" FontWeight="Bold" Background="#330000" Padding="8"/>
+                        <TextBlock x:Name="ErrorTextBlock" Foreground="#FF2A6D" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,10,0,0" FontWeight="Bold" Background="#2A0A18" Padding="8"/>
                     </StackPanel>
                 </GroupBox>
 
@@ -302,7 +315,7 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
@@ -321,17 +334,19 @@
                         </StackPanel>
                     </Grid>
                 </GroupBox>
+            </StackPanel>
 
-                <!-- 六、历史交易记录 -->
+            <!-- ================= 最右侧：历史交易记录 ================= -->
+            <StackPanel Grid.Column="2" Margin="10,0,0,0">
                 <GroupBox Header="[ 日志 ] 执行操作日志">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="100"/>
+                            <RowDefinition Height="520"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Button Content="&gt;&gt; 保存当前T结果 &lt;&lt;" Click="SaveRecordButton_Click" Style="{StaticResource TechButton}" Margin="0,0,0,5"/>
-                        <ListBox x:Name="HistoryListBox" Grid.Row="1" Background="#050508" Foreground="{StaticResource AccentDark}" BorderBrush="{StaticResource AccentDark}" BorderThickness="1" Margin="0,0,0,5" ScrollViewer.VerticalScrollBarVisibility="Auto" FontFamily="Consolas"/>
+                        <ListBox x:Name="HistoryListBox" Grid.Row="1" Background="#020409" Foreground="{StaticResource AccentDark}" BorderBrush="{StaticResource AccentDark}" BorderThickness="1" Margin="0,0,0,5" ScrollViewer.VerticalScrollBarVisibility="Auto" FontFamily="Consolas"/>
                         <Button Content="清空记录" Click="ClearHistoryButton_Click" Grid.Row="2" Style="{StaticResource TechButton}"/>
                     </Grid>
                 </GroupBox>
