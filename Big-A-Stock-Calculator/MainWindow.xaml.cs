@@ -427,17 +427,42 @@ namespace Big_A_Stock_Calculator
                             FileName = llamaServerPath,
                             Arguments = $"-m \"{modelPath}\" --port {port} -c 2048",
                             UseShellExecute = false,
-                            CreateNoWindow = true
+                            CreateNoWindow = true,
+                            WorkingDirectory = System.IO.Path.Combine(baseDir, "Exe")
                         };
+                        string dllPath = System.IO.Path.Combine(baseDir, "Dll");
+                        if (startInfo.Environment.ContainsKey("PATH"))
+                        {
+                            startInfo.Environment["PATH"] = dllPath + ";" + startInfo.Environment["PATH"];
+                        }
+                        else
+                        {
+                            startInfo.Environment["PATH"] = dllPath;
+                        }
+                        
+                        // We capture standard output and error to check for startup issues
+                        startInfo.RedirectStandardOutput = true;
+                        startInfo.RedirectStandardError = true;
+
                         _llamaProcess = Process.Start(startInfo);
                         
-                        // 预留 10-15 秒让模型加载进内存
-                        int waitLoops = 15;
+                        // 预留 15-20 秒让模型加载进内存
+                        int waitLoops = 20;
                         while (waitLoops > 0 && !_llamaProcess.HasExited)
                         {
                             await System.Threading.Tasks.Task.Delay(1000);
                             waitLoops--;
                         }
+                        
+                        if (_llamaProcess.HasExited)
+                        {
+                            string error = await _llamaProcess.StandardError.ReadToEndAsync();
+                            MessageBox.Show($"AI 引擎启动失败！\n错误信息：{error}", "引擎启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            HistoryListBox.Items.RemoveAt(0);
+                            if (button != null) button.IsEnabled = true;
+                            return;
+                        }
+
                         HistoryListBox.Items.RemoveAt(0);
                     }
                 }
