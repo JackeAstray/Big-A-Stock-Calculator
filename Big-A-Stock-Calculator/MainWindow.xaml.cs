@@ -62,7 +62,10 @@ namespace Big_A_Stock_Calculator
                         defaultModel = modelElement.GetString() ?? defaultModel;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"加载模型配置出错: {ex}");
+                }
             }
 
             if (Directory.Exists(modelsDir))
@@ -112,7 +115,10 @@ namespace Big_A_Stock_Calculator
                     }
                 }
             }
-            catch { /* 加载失败使用默认值 */ }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"加载设置出错: {ex}");
+            }
         }
 
         private void SaveSettings()
@@ -130,7 +136,10 @@ namespace Big_A_Stock_Calculator
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingFilePath, json);
             }
-            catch { /* 保存失败忽略 */ }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"保存设置出错: {ex}");
+            }
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -144,7 +153,10 @@ namespace Big_A_Stock_Calculator
                     _llamaProcess.Dispose();
                 }
             } 
-            catch { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"关闭进程出错: {ex}");
+            }
         }
 
         private void CalculateButton_Click(object sender, RoutedEventArgs e)
@@ -160,38 +172,55 @@ namespace Big_A_Stock_Calculator
                     throw new Exception("佣金费率格式不正确");
                 if (!decimal.TryParse(StampDutyRateTextBox.Text, out decimal stampDutyRate))
                     throw new Exception("印花税率格式不正确");
-                if (!decimal.TryParse(PriceTextBox.Text, out decimal price) || price <= 0)
-                    throw new Exception("交易单价必须为大于0的数字");
-                if (!int.TryParse(QuantityTextBox.Text, out int quantity) || quantity <= 0 || quantity % 100 != 0)
-                    throw new Exception("交易股数必须为100的整数倍");
-                if (!decimal.TryParse(TargetProfitTextBox.Text, out decimal targetProfitInput) || targetProfitInput < 0)
-                    throw new Exception("预期盈利必须为大于等于0的数字");
-                if (!decimal.TryParse(MaxLossTextBox.Text, out decimal maxLoss) || maxLoss < 0)
-                    throw new Exception("最大最大承受亏损必须为大于等于0的数字");
+                if (!decimal.TryParse(BuyPriceTextBox.Text, out decimal buyPrice))
+                    throw new Exception("买入交易单价格式不正确");
+                if (!int.TryParse(BuyQuantityTextBox.Text, out int buyQuantity) || buyQuantity < 0 || (buyQuantity != 0 && buyQuantity % 100 != 0))
+                    throw new Exception("买入交易股数必须为0或者100的整数倍");
+                if (!decimal.TryParse(SellPriceTextBox.Text, out decimal sellPrice))
+                    throw new Exception("卖出交易单价格式不正确");
+                if (!int.TryParse(SellQuantityTextBox.Text, out int sellQuantity) || sellQuantity < 0 || (sellQuantity != 0 && sellQuantity % 100 != 0))
+                    throw new Exception("卖出交易股数必须为0或者100的整数倍");
 
-                bool isPositiveT = OperationModeComboBox.SelectedIndex == 0; // 0为正T，1为倒T
-                bool isFree5 = IsFree5CheckBox.IsChecked == true;
+                bool isBuyValid = buyPrice > 0 && buyQuantity > 0;
+                bool isSellValid = sellPrice > 0 && sellQuantity > 0;
 
-                decimal targetProfit = targetProfitInput;
-                if (ProfitModeComboBox.SelectedIndex == 1) // 按收益率
+                if (!isBuyValid && !isSellValid)
                 {
-                    targetProfit = (price * quantity) * (targetProfitInput / 100m);
+                    throw new Exception("必须至少输入有效的买入或卖出数据(价格和股数都必须大于0)");
                 }
 
-                // 倒T逻辑防呆校验：校验是不是数量超卖
-                if (!isPositiveT)
+
+                bool isPositiveT = true; // Hardcoded default based on UI change
+                bool isFree5 = IsFree5CheckBox.IsChecked == true;
+
+                // Profit calculation disabled as TargetProfitTextBox is commented out
+                decimal targetProfit = 0; // Temporary placeholder
+                // if (ProfitModeComboBox.SelectedIndex == 1) // 按收益率
+                // {
+                //     targetProfit = (price * quantity) * (targetProfitInput / 100m);
+                // }
+
+                // 卖出逻辑防呆校验：校验是不是数量超卖
+                if (isSellValid)
                 {
-                    if (int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && quantity > holdingQty)
+                    if (int.TryParse(AvailableQuantityTextBox.Text, out int availableQty) && sellQuantity > availableQty)
                     {
-                        throw new Exception("倒T为先卖后买，交易卖出股数不能大于当前的【持有股份总数】！");
+                        throw new Exception("交易卖出股数不能大于当前的【可卖数量】！");
+                    }
+                    else if (int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && sellQuantity > holdingQty)
+                    {
+                        throw new Exception("交易卖出股数不能大于当前的【持有股份总数】！");
                     }
                 }
 
                 // 2. 调用核心计算逻辑
-                CalculateBreakeven(price, quantity, commissionRate, stampDutyRate, isPositiveT, isFree5, targetProfit, maxLoss);
+                CalculateBreakeven(isBuyValid ? buyPrice : 0m, isBuyValid ? buyQuantity : 0, 
+                                   isSellValid ? sellPrice : 0m, isSellValid ? sellQuantity : 0, 
+                                   commissionRate, stampDutyRate, isPositiveT, isFree5, targetProfit, 0 /*maxLoss*/);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"计算过程中出错: {ex.ToString()}"); // ADDED: Print complete exception details
                 ErrorTextBlock.Text = $"输入错误：{ex.Message}";
                 ErrorTextBlock.Visibility = Visibility.Visible;
                 TotalFeeTextBlock.Text = "--- 元";
@@ -205,72 +234,130 @@ namespace Big_A_Stock_Calculator
         }
 
         /// <summary>
-        /// 核心计算逻辑：计算保本差价和纯利目标
+        /// 核心计算逻辑：计算包含全场景单边和双边的交易明细
         /// </summary>
-        private void CalculateBreakeven(decimal p, int n, decimal commissionRate, decimal stampDutyRate, bool isPositiveT, bool isFree5, decimal targetProfit, decimal maxLoss)
+        private void CalculateBreakeven(decimal buyPrice, int buyQty, decimal sellPrice, int sellQty, decimal commissionRate, decimal stampDutyRate, bool isPositiveT, bool isFree5, decimal targetProfit, decimal maxLoss)
         {
-            // 初步估算：假设两笔交易价格相近，以首笔金额为准估算双边费率
-            decimal totalTurnover = p * n; 
+            decimal buyTurnover = buyPrice * buyQty;
+            decimal sellTurnover = sellPrice * sellQty;
 
-            // 计算单次佣金
-            decimal singleCommission = totalTurnover * commissionRate;
-            if (!isFree5 && singleCommission < 5m)
+            // 买入费用计算
+            decimal buyCommission = 0m;
+            decimal buyTransferFee = 0m;
+            decimal buyFee = 0m;
+            if (buyQty > 0)
             {
-                singleCommission = 5m;
+                buyCommission = buyTurnover * commissionRate;
+                if (!isFree5 && buyCommission < 5m) buyCommission = 5m;
+                buyTransferFee = buyTurnover * TransferFeeRate;
+                buyFee = buyCommission + buyTransferFee;
             }
 
-            // 【明细计算】
-            decimal buyTransferFee = totalTurnover * TransferFeeRate;
-            decimal buyFee = singleCommission + buyTransferFee;
-            
-            decimal sellTransferFee = buyTransferFee;
-            decimal sellStampDuty = totalTurnover * stampDutyRate;
-            decimal sellFee = singleCommission + sellTransferFee + sellStampDuty;
+            // 卖出费用计算
+            decimal sellCommission = 0m;
+            decimal sellTransferFee = 0m;
+            decimal sellStampDuty = 0m;
+            decimal sellFee = 0m;
+            if (sellQty > 0)
+            {
+                sellCommission = sellTurnover * commissionRate;
+                if (!isFree5 && sellCommission < 5m) sellCommission = 5m;
+                sellTransferFee = sellTurnover * TransferFeeRate;
+                sellStampDuty = sellTurnover * stampDutyRate;
+                sellFee = sellCommission + sellTransferFee + sellStampDuty;
+            }
 
-            decimal totalCommission = singleCommission * 2;
+            decimal totalCommission = buyCommission + sellCommission;
             decimal totalTransferFee = buyTransferFee + sellTransferFee;
             decimal totalStampDuty = sellStampDuty;
 
             // 总手续费
             decimal totalFee = buyFee + sellFee;
 
-            // 保本所需每股差价
-            decimal breakevenDiff = totalFee / n;
-            // 达成纯利所需额外每股差价
-            decimal profitDiff = targetProfit / n;
-            // 最大亏损允许的差价
-            decimal lossDiff = maxLoss / n;
+            // 保本与目标价计算（只有当两边数字都完整存在且等量时差价才有保本意义。如果是不等量/单边，就仅计算手续费）
+            decimal targetPrice = 0m;
+            decimal profitTargetPrice = 0m;
+            decimal stopLossPrice = 0m;
 
-            // 目标价计算
-            decimal targetPrice;
-            decimal profitTargetPrice;
-            decimal stopLossPrice;
+            int refQty = Math.Max(buyQty, sellQty); // fallback to max
+            if (buyQty > 0 && sellQty > 0 && buyQty == sellQty)
+            {
+                refQty = buyQty;
+                decimal p = buyPrice; // Fallback anchor based on Positive/Negative T if needed? For now just use BuyPrice as starting base for "buy first"
+                if (!isPositiveT) p = sellPrice;
 
-            if (isPositiveT)
-            {
-                // 正T(先买后卖)：卖出价需要 > 买入价 + 差价
-                targetPrice = p + breakevenDiff;
-                profitTargetPrice = p + breakevenDiff + profitDiff;
-                stopLossPrice = p + breakevenDiff - lossDiff;
-            }
-            else
-            {
-                // 倒T(先卖后买)：买入价需要 < 卖出价 - 差价
-                targetPrice = p - breakevenDiff;
-                profitTargetPrice = p - breakevenDiff - profitDiff;
-                stopLossPrice = p - breakevenDiff + lossDiff;
+                decimal breakevenDiff = totalFee / refQty;
+                decimal profitDiff = targetProfit / refQty;
+                decimal lossDiff = maxLoss / refQty;
+
+                if (isPositiveT)
+                {
+                    targetPrice = buyPrice + breakevenDiff;
+                    profitTargetPrice = buyPrice + breakevenDiff + profitDiff;
+                    stopLossPrice = buyPrice + breakevenDiff - lossDiff;
+                }
+                else
+                {
+                    targetPrice = sellPrice - breakevenDiff;
+                    profitTargetPrice = sellPrice - breakevenDiff - profitDiff;
+                    stopLossPrice = sellPrice - breakevenDiff + lossDiff;
+                }
             }
 
             // 更新UI结果显示
             TotalFeeTextBlock.Text = $"{Math.Round(totalFee, 2)} 元";
             if (FeeDetailTextBlock != null)
                 FeeDetailTextBlock.Text = $"[ 明细: 佣金 {Math.Round(totalCommission, 2)} | 印花税 {Math.Round(totalStampDuty, 2)} | 过户费 {Math.Round(totalTransferFee, 2)} ]";
-            TargetPriceTextBlock.Text = $"{Math.Round(targetPrice, 3)} 元";
-            ProfitTargetPriceTextBlock.Text = $"{Math.Round(profitTargetPrice, 3)} 元";
-            if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = $"{Math.Round(stopLossPrice, 3)} 元";
 
-            // 进行持仓扩展分析
-            CalculateHoldingPnL(p, n, targetProfit);
+            // 计算实际盈亏预估（即使不等量或者单边，也可以根据实际营收差额 - 总费用计算）
+            decimal netProfit = 0m;
+
+            // ====== 单边买入：预估保本卖出价 ======
+            if (buyQty > 0 && sellQty == 0)
+            {
+                // 买入单边时，提示需要卖什么价格才能不亏手续费
+                decimal breakevenSellPrice = buyPrice + (buyFee / buyQty);
+                TargetPriceTextBlock.Text = $"预估保本卖价：{Math.Round(breakevenSellPrice, 3)} 元";
+                ProfitTargetPriceTextBlock.Text = "--- 元";
+                if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
+            }
+            // ====== 单边卖出：预估保本买入价 ======
+            else if (sellQty > 0 && buyQty == 0)
+            {
+                // 卖出单边时，提示要用什么价格接回才不亏手续费
+                decimal breakevenBuyPrice = sellPrice - (sellFee / sellQty);
+                TargetPriceTextBlock.Text = $"预估接回价：{Math.Round(breakevenBuyPrice, 3)} 元";
+                ProfitTargetPriceTextBlock.Text = "--- 元";
+                if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
+            }
+            // ====== 双边都有 T 操作 ======
+            else if (buyQty > 0 && sellQty > 0)
+            {
+                // 买入和卖出都发生的时候，实际盈亏 = 卖出的钱 - 买入的钱 - 本次双边产生的所有的手续费。 
+                netProfit = (sellTurnover) - (buyTurnover) - totalFee;
+
+                if (buyQty == sellQty)
+                {
+                    TargetPriceTextBlock.Text = $"{Math.Round(netProfit, 2)} 元";
+                    ProfitTargetPriceTextBlock.Text = $"{Math.Round(profitTargetPrice, 3)} 元";
+                    if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = $"{Math.Round(stopLossPrice, 3)} 元";
+                }
+                else
+                {
+                    TargetPriceTextBlock.Text = $"波段净现金流：{Math.Round(netProfit, 2)} 元";
+                    ProfitTargetPriceTextBlock.Text = "--- 元";
+                    if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
+                }
+            }
+            else
+            {
+                TargetPriceTextBlock.Text = "--- 元";
+                ProfitTargetPriceTextBlock.Text = "--- 元";
+                if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
+            }
+
+            // 进行持仓扩展分析 (传参这里我们把本次操作挣下来的净利传入用作降本)
+            CalculateHoldingPnL(buyQty > 0 ? buyPrice : sellPrice, refQty, buyQty > 0 && sellQty > 0 ? netProfit : 0m);
         }
 
         // ================ 各个额外快捷按钮事件 ================
@@ -278,10 +365,10 @@ namespace Big_A_Stock_Calculator
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
             ErrorTextBlock.Visibility = Visibility.Collapsed;
-            PriceTextBox.Text = "";
-            QuantityTextBox.Text = "";
-            TargetProfitTextBox.Text = "100";
-            MaxLossTextBox.Text = "100";
+            BuyPriceTextBox.Text = "20.20";
+            BuyQuantityTextBox.Text = "200";
+            SellPriceTextBox.Text = "21.20";
+            SellQuantityTextBox.Text = "200";
             YesterdayCloseTextBox.Text = "";
             LimitUpTextBlock.Text = "---";
             LimitDownTextBlock.Text = "---";
@@ -328,16 +415,16 @@ namespace Big_A_Stock_Calculator
         {
             if (TargetPriceTextBlock.Text.Contains("---")) return;
 
-            string mode = OperationModeComboBox.SelectedIndex == 0 ? "📈 正T(先买后卖)" : "📉 倒T(先卖后买)";
-            string price = PriceTextBox.Text;
-            string qty = QuantityTextBox.Text;
+            string mode = "📈 正T(先买后卖)";
+            string price = BuyPriceTextBox.Text;
+            string qty = BuyQuantityTextBox.Text;
             string target = ProfitTargetPriceTextBlock.Text;
-            string loss = StopLossPriceTextBlock.Text;
+            string loss = StopLossPriceTextBlock != null ? StopLossPriceTextBlock.Text : "---";
             string breakeven = TargetPriceTextBlock.Text;
             string fee = TotalFeeTextBlock.Text;
-            
-            string expectedProfit = TargetProfitTextBox.Text;
-            if (ProfitModeComboBox.SelectedIndex == 1) expectedProfit += "%"; else expectedProfit += "元";
+
+            string expectedProfit = "---";
+            // if (ProfitModeComboBox.SelectedIndex == 1) expectedProfit += "%"; else expectedProfit += "元";
 
             StringBuilder sb = new StringBuilder();
             sb.AppendLine($"============== 策略卡片 ==============");
@@ -368,14 +455,26 @@ namespace Big_A_Stock_Calculator
         {
             try
             {
-                string mode = OperationModeComboBox.SelectedIndex == 0 ? "正T(先买后卖)" : "倒T(先卖后买)";
-                string price = PriceTextBox.Text;
-                string qty = QuantityTextBox.Text;
+                string mode = "正T(先买后卖)";
+                string price = BuyPriceTextBox.Text;
+                string qty = BuyQuantityTextBox.Text;
                 string currentCost = CostPriceTextBox.Text;
                 string holdingQty = HoldingQuantityTextBox.Text;
                 string target = ProfitTargetPriceTextBlock.Text;
                 
-                string prompt = $"我正在做A股，当前持有股数{holdingQty}，成本价{currentCost}元。我想做{mode}，计划交易价格{price}，交易数量{qty}。目前的止盈目标是{target}。请简短地给一些交易建议。";
+                string prompt = $@"
+你是一个专业的A股交易助手。用户目前正在进行股票操作。
+【当前持仓信息】
+当前的持有股数：{holdingQty}
+当前的成本价：{currentCost}元。
+【交易需求】
+打算进行操作的方向：{mode}
+计划的交易价格：{price}元
+交易的数量：{qty}股。
+期待的止盈目标：{target}。
+
+请你根据目前的信息，以简短的语言给出一些交易策略或建议指导。
+";
 
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 string llamaServerPath = System.IO.Path.Combine(baseDir, "Exe", "llama-server.exe");
@@ -402,7 +501,10 @@ namespace Big_A_Stock_Calculator
                             port = portElement.GetInt32();
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"读取LlamaServerPort配置出错: {ex}");
+                    }
                 }
 
                 if (!File.Exists(llamaServerPath) || !File.Exists(modelPath))
@@ -531,7 +633,7 @@ namespace Big_A_Stock_Calculator
             {
                 if (decimal.TryParse(CostPriceTextBox?.Text, out decimal cp) && cp > 0 &&
                     int.TryParse(HoldingQuantityTextBox?.Text, out int hq) && hq > 0 &&
-                    decimal.TryParse(string.IsNullOrWhiteSpace(CurrentPriceTextBox?.Text) ? PriceTextBox?.Text : CurrentPriceTextBox?.Text, out decimal rp) && rp > 0)
+                    decimal.TryParse(string.IsNullOrWhiteSpace(CurrentPriceTextBox?.Text) ? BuyPriceTextBox?.Text : CurrentPriceTextBox?.Text, out decimal rp) && rp > 0)
                 {
                     decimal currentPnL = (rp - cp) * hq;
                     HoldingPnLTextBlock.Text = $"{Math.Round(currentPnL, 2)} 元";
@@ -593,7 +695,7 @@ namespace Big_A_Stock_Calculator
             }
         }
 
-        private void FillQuantity(double fraction)
+        private void FillQuantity(double fraction, bool isBuy)
         {
             if (int.TryParse(HoldingQuantityTextBox.Text, out int holdingQty) && holdingQty > 0)
             {
@@ -601,7 +703,8 @@ namespace Big_A_Stock_Calculator
                 targetQty = (targetQty / 100) * 100; // 向下取整到100的倍数
                 if (targetQty > 0)
                 {
-                    QuantityTextBox.Text = targetQty.ToString();
+                    if (isBuy) BuyQuantityTextBox.Text = targetQty.ToString();
+                    else SellQuantityTextBox.Text = targetQty.ToString();
                 }
                 else
                 {
@@ -614,9 +717,13 @@ namespace Big_A_Stock_Calculator
             }
         }
 
-        private void BtnFullPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0);
-        private void BtnHalfPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(0.5);
-        private void BtnOneThirdPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0 / 3.0);
+        private void BtnFullPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0, true);
+        private void BtnHalfPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(0.5, true);
+        private void BtnOneThirdPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0 / 3.0, true);
+
+        private void BtnSellFullPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0, false);
+        private void BtnSellHalfPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(0.5, false);
+        private void BtnSellOneThirdPosition_Click(object sender, RoutedEventArgs e) => FillQuantity(1.0 / 3.0, false);
 
 
         /// <summary>
