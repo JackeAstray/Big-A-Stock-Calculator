@@ -311,22 +311,56 @@ namespace Big_A_Stock_Calculator
 
             // 计算实际盈亏预估（即使不等量或者单边，也可以根据实际营收差额 - 总费用计算）
             decimal netProfit = 0m;
+            decimal displayProfitValue = 0m; // 用于控制颜色显示
 
             // ====== 单边买入：预估保本卖出价 ======
             if (buyQty > 0 && sellQty == 0)
             {
-                // 买入单边时，提示需要卖什么价格才能不亏手续费
+                // 买入单边时，如果在没有以更高价卖出的情况下，实际发生的盈亏就是单纯的手续费损失
                 decimal breakevenSellPrice = buyPrice + (buyFee / buyQty);
-                TargetPriceTextBlock.Text = $"预估保本卖价：{Math.Round(breakevenSellPrice, 3)} 元";
+                decimal costPrice = 0m;
+                decimal.TryParse(CostPriceTextBox.Text, out costPrice);
+
+                if (costPrice > 0)
+                {
+                    // 对于单边加仓（买入），盈亏计算可以理解为当前的浮动盈亏因为加仓而被平均了，
+                    // 但通常只是增加仓位而已，实际上这次操作本身的"盈亏"在没有卖出前都是未兑现的。
+                    // 但是我们可以展示这笔【相对当前成本】是买贵了还是买便宜了。
+                    decimal diffFromCost = (costPrice - buyPrice) * buyQty - buyFee;
+                    string desc = diffFromCost >= 0 ? "买入相对节约" : "买入相对亏损";
+                    TargetPriceTextBlock.Text = $"预估保本卖价：{Math.Round(breakevenSellPrice, 3)} 元 ({desc}: {Math.Round(diffFromCost, 2)} 元)";
+                    displayProfitValue = diffFromCost;
+                }
+                else
+                {
+                    decimal estimatedLoss = -buyFee;
+                    TargetPriceTextBlock.Text = $"预估保本卖价：{Math.Round(breakevenSellPrice, 3)} 元 (手续费: {Math.Round(estimatedLoss, 2)} 元)";
+                    displayProfitValue = estimatedLoss;
+                }
+
                 ProfitTargetPriceTextBlock.Text = "--- 元";
                 if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
             }
             // ====== 单边卖出：预估保本买入价 ======
             else if (sellQty > 0 && buyQty == 0)
             {
-                // 卖出单边时，提示要用什么价格接回才不亏手续费
+                // 卖出单边时，如果参考了成本价，展示针对该部分卖出的盈亏，否则展示单纯手续费
                 decimal breakevenBuyPrice = sellPrice - (sellFee / sellQty);
-                TargetPriceTextBlock.Text = $"预估接回价：{Math.Round(breakevenBuyPrice, 3)} 元";
+                decimal costPrice = 0m;
+                decimal.TryParse(CostPriceTextBox.Text, out costPrice);
+
+                if (costPrice > 0)
+                {
+                    decimal realizedProfit = (sellPrice - costPrice) * sellQty - sellFee;
+                    TargetPriceTextBlock.Text = $"预估接回价：{Math.Round(breakevenBuyPrice, 3)} 元 (卖出盈亏: {Math.Round(realizedProfit, 2)} 元)";
+                    displayProfitValue = realizedProfit;
+                }
+                else
+                {
+                    decimal estimatedLoss = -sellFee;
+                    TargetPriceTextBlock.Text = $"预估接回价：{Math.Round(breakevenBuyPrice, 3)} 元 (手续费: {Math.Round(estimatedLoss, 2)} 元)";
+                    displayProfitValue = estimatedLoss;
+                }
                 ProfitTargetPriceTextBlock.Text = "--- 元";
                 if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
             }
@@ -335,6 +369,7 @@ namespace Big_A_Stock_Calculator
             {
                 // 买入和卖出都发生的时候，实际盈亏 = 卖出的钱 - 买入的钱 - 本次双边产生的所有的手续费。 
                 netProfit = (sellTurnover) - (buyTurnover) - totalFee;
+                displayProfitValue = netProfit;
 
                 if (buyQty == sellQty)
                 {
@@ -354,6 +389,24 @@ namespace Big_A_Stock_Calculator
                 TargetPriceTextBlock.Text = "--- 元";
                 ProfitTargetPriceTextBlock.Text = "--- 元";
                 if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
+                displayProfitValue = 0;
+            }
+
+            // 更新盈亏颜色 (如果存在 TargetPriceTextBlock)
+            if (TargetPriceTextBlock != null)
+            {
+                if (displayProfitValue > 0)
+                {
+                    TargetPriceTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(255, 80, 80)); // 红色盈利
+                }
+                else if (displayProfitValue < 0)
+                {
+                    TargetPriceTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(80, 200, 80)); // 绿色亏损
+                }
+                else
+                {
+                    TargetPriceTextBlock.Foreground = new SolidColorBrush(Colors.Cyan); // 默认青色或白色
+                }
             }
 
             // 进行持仓扩展分析 (传参这里我们把本次操作挣下来的净利传入用作降本)
@@ -372,22 +425,17 @@ namespace Big_A_Stock_Calculator
             YesterdayCloseTextBox.Text = "";
             LimitUpTextBlock.Text = "---";
             LimitDownTextBlock.Text = "---";
-            
+
             CostPriceTextBox.Text = "";
             HoldingQuantityTextBox.Text = "";
             CurrentPriceTextBox.Text = "";
-            
-            if (AddPositionPriceTextBox != null) AddPositionPriceTextBox.Text = "";
-            if (AddPositionQuantityTextBox != null) AddPositionQuantityTextBox.Text = "";
-            if (AddPositionNewCostTextBlock != null) AddPositionNewCostTextBlock.Text = "---";
-            if (AddPositionDiffTextBlock != null) AddPositionDiffTextBlock.Text = "";
-            
+
             TotalFeeTextBlock.Text = "--- 元";
             if (FeeDetailTextBlock != null) FeeDetailTextBlock.Text = "[ 明细: 佣金 --- | 印花税 --- | 过户费 --- ]";
             TargetPriceTextBlock.Text = "--- 元";
             ProfitTargetPriceTextBlock.Text = "--- 元";
             if (StopLossPriceTextBlock != null) StopLossPriceTextBlock.Text = "--- 元";
-            
+
             HoldingPnLTextBlock.Text = "---";
             NewCostPriceTextBlock.Text = "---";
         }
@@ -413,37 +461,7 @@ namespace Big_A_Stock_Calculator
 
         private void SaveRecordButton_Click(object sender, RoutedEventArgs e)
         {
-            if (TargetPriceTextBlock.Text.Contains("---")) return;
-
-            string mode = "📈 正T(先买后卖)";
-            string price = BuyPriceTextBox.Text;
-            string qty = BuyQuantityTextBox.Text;
-            string target = ProfitTargetPriceTextBlock.Text;
-            string loss = StopLossPriceTextBlock != null ? StopLossPriceTextBlock.Text : "---";
-            string breakeven = TargetPriceTextBlock.Text;
-            string fee = TotalFeeTextBlock.Text;
-
-            string expectedProfit = "---";
-            // if (ProfitModeComboBox.SelectedIndex == 1) expectedProfit += "%"; else expectedProfit += "元";
-
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine($"============== 策略卡片 ==============");
-            sb.AppendLine($"[时间] {DateTime.Now:HH:mm:ss}");
-            sb.AppendLine($"[方向] {mode}");
-            sb.AppendLine($"[基准] 单价: {price} 元 | 数量: {qty} 股");
-            sb.AppendLine($"[预期] 目标利润: {expectedProfit} (预估手续费 {fee})");
-            sb.AppendLine($"--------------------------------------");
-            sb.AppendLine($"🎯 目标止盈挂单价: {target}");
-            sb.AppendLine($"🛡️ 保本撤退基准价: {breakeven}");
-            sb.AppendLine($"⚠️ 极限止损离场价: {loss}");
-
-            if (!NewCostPriceTextBlock.Text.Contains("---"))
-            {
-                sb.AppendLine($"✨ 策略成功后，新持仓均价将被降至: {NewCostPriceTextBlock.Text}");
-            }
-            sb.AppendLine($"======================================");
-
-            HistoryListBox.Items.Insert(0, sb.ToString());
+            // Removed
         }
 
         private void ClearHistoryButton_Click(object sender, RoutedEventArgs e)
@@ -524,15 +542,19 @@ namespace Big_A_Stock_Calculator
                     if (processes.Length == 0)
                     {
                         HistoryListBox.Items.Insert(0, "[启动 AI 服务器引擎中... 模型加载需要十多秒，请稍候]");
+
+                        string dllPath = System.IO.Path.Combine(baseDir, "Dll");
+                        string exeDir = System.IO.Path.Combine(baseDir, "Exe");
+
                         var startInfo = new ProcessStartInfo
                         {
                             FileName = llamaServerPath,
                             Arguments = $"-m \"{modelPath}\" --port {port} -c 2048",
                             UseShellExecute = false,
                             CreateNoWindow = true,
-                            WorkingDirectory = System.IO.Path.Combine(baseDir, "Exe")
+                            WorkingDirectory = dllPath // 将工作目录设置到 Dll 文件夹，这样 llama.cpp 就能找到同级的 DLL
                         };
-                        string dllPath = System.IO.Path.Combine(baseDir, "Dll");
+
                         if (startInfo.Environment.ContainsKey("PATH"))
                         {
                             startInfo.Environment["PATH"] = dllPath + ";" + startInfo.Environment["PATH"];
@@ -547,21 +569,50 @@ namespace Big_A_Stock_Calculator
                         startInfo.RedirectStandardError = true;
 
                         _llamaProcess = Process.Start(startInfo);
-                        
-                        // 预留 15-20 秒让模型加载进内存
-                        int waitLoops = 20;
-                        while (waitLoops > 0 && !_llamaProcess.HasExited)
+
+                        // 循环检查服务器是否真正准备好接收请求（而不是单纯的等时间）
+                        bool isReady = false;
+                        int maxWaitSeconds = 60; // 最多等1分钟
+                        while (maxWaitSeconds > 0 && !_llamaProcess.HasExited)
                         {
+                            try
+                            {
+                                using var checkClient = new HttpClient();
+                                checkClient.Timeout = TimeSpan.FromSeconds(2);
+                                var checkRes = await checkClient.GetAsync($"http://127.0.0.1:{port}/health"); // or simply to the base URL
+                                if (checkRes.IsSuccessStatusCode)
+                                {
+                                    isReady = true;
+                                    break;
+                                }
+                            }
+                            catch { /* Ignore */ }
+
                             await System.Threading.Tasks.Task.Delay(1000);
-                            waitLoops--;
+                            maxWaitSeconds--;
                         }
-                        
-                        if (_llamaProcess.HasExited)
+
+                        if (_llamaProcess.HasExited || !isReady)
                         {
-                            string error = await _llamaProcess.StandardError.ReadToEndAsync();
-                            MessageBox.Show($"AI 引擎启动失败！\n错误信息：{error}", "引擎启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            string error = "";
+                            if (_llamaProcess.HasExited)
+                            {
+                                error = await _llamaProcess.StandardError.ReadToEndAsync();
+                                if (string.IsNullOrWhiteSpace(error) || error.Length < 10)
+                                {
+                                    error += "\n" + await _llamaProcess.StandardOutput.ReadToEndAsync();
+                                }
+                            }
+                            else
+                            {
+                                error = "等待 AI 服务器就绪超时。服务器也许正在加载一个过于庞大的模型，或者发生了启动挂起。";
+                            }
+
+                            MessageBox.Show($"AI 引擎启动失败或连接超时！\n\n检查是否具有正确的 GGML 后端 DLL。\n\n日志/提示：\n{error}", "引擎启动错误", MessageBoxButton.OK, MessageBoxImage.Error);
                             HistoryListBox.Items.RemoveAt(0);
                             if (button != null) button.IsEnabled = true;
+                            // 尝试杀掉挂起的进程
+                            try { if (!_llamaProcess.HasExited) _llamaProcess.Kill(); } catch { }
                             return;
                         }
 
@@ -624,10 +675,8 @@ namespace Big_A_Stock_Calculator
             }
         }
 
-        private void AddPosition_Update(object sender, TextChangedEventArgs e)
+        private void Holding_Update(object sender, TextChangedEventArgs e)
         {
-            if (AddPositionNewCostTextBlock == null) return;
-
             // 1. Calculate PnL Live
             if (HoldingPnLTextBlock != null)
             {
@@ -644,54 +693,6 @@ namespace Big_A_Stock_Calculator
                     HoldingPnLTextBlock.Text = "---";
                     HoldingPnLTextBlock.Foreground = Brushes.White;
                 }
-            }
-
-            // 2. Add position simulation
-            if (decimal.TryParse(CostPriceTextBox?.Text, out decimal currentCost) && currentCost > 0 &&
-                int.TryParse(HoldingQuantityTextBox?.Text, out int currentQty) && currentQty > 0 &&
-                decimal.TryParse(AddPositionPriceTextBox?.Text, out decimal addPrice) && addPrice > 0 &&
-                int.TryParse(AddPositionQuantityTextBox?.Text, out int addQty) && addQty > 0)
-            {
-                decimal commissionRate = decimal.TryParse(CommissionRateTextBox?.Text, out decimal cr) ? cr : 0.00025m;
-                bool isFree5 = IsFree5CheckBox?.IsChecked == true;
-
-                decimal turnover = addPrice * addQty;
-                decimal commission = turnover * commissionRate;
-                if (!isFree5 && commission < 5m) commission = 5m;
-
-                decimal transferFee = turnover * TransferFeeRate;
-
-                decimal totalCost = (currentCost * currentQty) + turnover + commission + transferFee;
-                int totalQty = currentQty + addQty;
-
-                decimal newAverageCost = totalCost / totalQty;
-                decimal diff = newAverageCost - currentCost;
-
-                AddPositionNewCostTextBlock.Text = $"{Math.Round(newAverageCost, 3)} 元";
-
-                if (AddPositionDiffTextBlock != null)
-                {
-                    if (diff > 0)
-                    {
-                        AddPositionDiffTextBlock.Text = $" (变高 {Math.Round(diff, 3)} 元)";
-                        AddPositionDiffTextBlock.Foreground = (Brush)FindResource("TechRed");
-                    }
-                    else if (diff < 0)
-                    {
-                        AddPositionDiffTextBlock.Text = $" (变低 {Math.Round(-diff, 3)} 元)";
-                        AddPositionDiffTextBlock.Foreground = (Brush)FindResource("TechGreen");
-                    }
-                    else
-                    {
-                        AddPositionDiffTextBlock.Text = $" (不变)";
-                        AddPositionDiffTextBlock.Foreground = Brushes.White;
-                    }
-                }
-            }
-            else
-            {
-                AddPositionNewCostTextBlock.Text = "---";
-                if (AddPositionDiffTextBlock != null) AddPositionDiffTextBlock.Text = "";
             }
         }
 
